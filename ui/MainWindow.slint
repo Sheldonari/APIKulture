@@ -107,10 +107,12 @@ export component MainWindow inherits Window {
     }
     ScrollView {
       max-height: 80px;
-      TextEdit {
+      Text {
+        width: 100%;
         text: AppLogic.response-headers;
-        read-only: true;
+        wrap: word-wrap;
         font-family: "monospace";
+        font-size: 12px;
       }
     }
 
@@ -121,10 +123,12 @@ export component MainWindow inherits Window {
     ScrollView {
       vertical-stretch: 1;
       min-height: 150px;
-      TextEdit {
+      Text {
+        width: 100%;
         text: AppLogic.response-body;
-        read-only: true;
+        wrap: word-wrap;
         font-family: "monospace";
+        font-size: 12px;
       }
     }
   }
