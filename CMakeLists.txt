@@ -64,6 +64,7 @@ add_executable(apikulture
 	src/app_state.cpp
 	src/http_client.cpp
 	src/collections_io.cpp
+	src/window_state.cpp
 )
 
 target_include_directories(apikulture PRIVATE

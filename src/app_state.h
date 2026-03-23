@@ -41,6 +41,7 @@ private:
 	void commit_form_to_current_item();
 	void apply_form_from_current_item();
 	void refresh_response_display();
+	void push_response_body(const std::string& text);
 	/// Non-null when collections/request indices refer to a valid item.
 	apikulture::RequestItem* mutable_current_request_item();
 	void refresh_collection_names_model();
@@ -65,6 +66,8 @@ private:
 
 	/// Set only after a successful HTTP response; used with JSONPath to build `response-body`.
 	std::optional<std::string> last_success_response_body_;
+	/// `Content-Type` value for the last successful response (for highlighter when body is JSONPath-filtered).
+	std::optional<std::string> last_success_content_type_;
 
 	std::vector<apikulture::Collection> collections_;
 	int collection_index_{0};

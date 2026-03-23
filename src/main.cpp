@@ -3,6 +3,7 @@
 #include "app_state.h"
 #include "platform_color_scheme.h"
 #include "theme_watcher.h"
+#include "window_state.hpp"
 
 #include <cstdlib>
 #include <cstring>
@@ -78,6 +79,10 @@ int main(int argc, char** argv) {
 		g.set_response_body(slint::SharedString(""));
 	}
 
+	if (apikulture::window_state::load_main_window_maximized()) {
+		ui->window().set_maximized(true);
+	}
+
 	state.init_collections_ui();
 
 	auto& logic = ui->global<AppLogic>();
@@ -95,6 +100,7 @@ int main(int argc, char** argv) {
 	logic.on_response_jsonpath_changed([&state]() { state.response_jsonpath_changed(); });
 
 	ui->run();
+	apikulture::window_state::save_main_window_maximized(ui->window().is_maximized());
 	stop_theme_watcher();
 	return 0;
 }

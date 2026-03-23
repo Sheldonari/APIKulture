@@ -20,6 +20,8 @@ struct RequestItem {
 	std::string last_response_headers;
 	/// Raw response body from the last successful request; used with `jsonpath` to rebuild the body view.
 	std::string last_response_body_raw;
+	/// Value of the last successful response `Content-Type` header (for syntax highlighting after reload).
+	std::string last_response_content_type;
 	/// If non-empty, last response was an error; message shown as response body (raw body unused).
 	std::string last_response_error;
 };

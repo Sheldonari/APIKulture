@@ -18,6 +18,7 @@ void to_json(nlohmann::json& j, const RequestItem& r) {
 	                     {"last_response_status", r.last_response_status},
 	                     {"last_response_headers", r.last_response_headers},
 	                     {"last_response_body_raw", r.last_response_body_raw},
+	                     {"last_response_content_type", r.last_response_content_type},
 	                     {"last_response_error", r.last_response_error}};
 }
 
@@ -31,6 +32,7 @@ void from_json(const nlohmann::json& j, RequestItem& r) {
 	r.last_response_status = j.value("last_response_status", std::string());
 	r.last_response_headers = j.value("last_response_headers", std::string());
 	r.last_response_body_raw = j.value("last_response_body_raw", std::string());
+	r.last_response_content_type = j.value("last_response_content_type", std::string());
 	r.last_response_error = j.value("last_response_error", std::string());
 }
 
