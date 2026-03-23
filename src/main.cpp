@@ -89,6 +89,8 @@ int main(int argc, char** argv) {
 	logic.on_delete_request([&state]() { state.delete_request(); });
 	logic.on_duplicate_request([&state]() { state.duplicate_request(); });
 	logic.on_save_collections([&state]() { state.save_collections(); });
+	logic.on_commit_collection_name([&state]() { state.commit_collection_name(); });
+	logic.on_commit_request_name([&state]() { state.commit_request_name(); });
 
 	ui->run();
 	stop_theme_watcher();

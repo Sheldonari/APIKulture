@@ -10,6 +10,11 @@ export global AppLogic {
 	callback delete-request();
 	callback duplicate-request();
 	callback save-collections();
+	callback commit-collection-name();
+	callback commit-request-name();
+
+	in-out property <string> collection-name-edit: "";
+	in-out property <string> request-name-edit: "";
 
 	in property <[string]> collection-names: [];
 	in property <[string]> request-names: [];
@@ -65,7 +70,19 @@ export component MainWindow inherits Window {
 							height: parent.height;
 							background: index == AppLogic.selected-collection-index ? Palette.selection-background : (col-touch.has-hover ? Palette.control-background : transparent);
 							border-radius: 4px;
-							Text {
+							if index == AppLogic.selected-collection-index: LineEdit {
+								placeholder-text: "Name";
+								text <=> AppLogic.collection-name-edit;
+								font-size: 13px;
+								x: 6px;
+								y: parent.height / 2 - self.height / 2;
+								width: parent.width - 12px;
+								min-height: 26px;
+								accepted => {
+									AppLogic.commit-collection-name();
+								}
+							}
+							if index != AppLogic.selected-collection-index: Text {
 								text: name;
 								overflow: elide;
 								font-size: 13px;
@@ -102,7 +119,19 @@ export component MainWindow inherits Window {
 							height: parent.height;
 							background: index == AppLogic.selected-request-index ? Palette.selection-background : (req-touch.has-hover ? Palette.control-background : transparent);
 							border-radius: 4px;
-							Text {
+							if index == AppLogic.selected-request-index: LineEdit {
+								placeholder-text: "Name";
+								text <=> AppLogic.request-name-edit;
+								font-size: 13px;
+								x: 6px;
+								y: parent.height / 2 - self.height / 2;
+								width: parent.width - 12px;
+								min-height: 26px;
+								accepted => {
+									AppLogic.commit-request-name();
+								}
+							}
+							if index != AppLogic.selected-request-index: Text {
 								text: name;
 								overflow: elide;
 								font-size: 13px;

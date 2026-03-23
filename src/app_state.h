@@ -27,6 +27,8 @@ public:
 	void delete_request();
 	void duplicate_request();
 	void save_collections();
+	void commit_collection_name();
+	void commit_request_name();
 
 	/// Call after MainWindow is created to load data into UI models.
 	void init_collections_ui();
@@ -37,6 +39,7 @@ private:
 	void apply_form_from_current_item();
 	void refresh_collection_names_model();
 	void refresh_request_names_model();
+	void push_name_edits_to_ui();
 	void push_selection_to_ui();
 	std::shared_ptr<slint::VectorModel<slint::SharedString>> make_name_model(
 			const std::vector<std::string>& names);

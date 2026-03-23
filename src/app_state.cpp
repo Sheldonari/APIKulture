@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string_view>
 #include <algorithm>
+#include <cctype>
 #include <slint_models.h>
 
 namespace {
@@ -55,6 +56,12 @@ std::string to_std_string(const slint::SharedString& ss) {
 	}
 	if (v.data() == nullptr || v.size() == 0) return std::string();
 	return std::string(v.data(), v.size());
+}
+
+void trim_in_place(std::string& s) {
+	auto not_space = [](unsigned char c) { return !std::isspace(c); };
+	s.erase(s.begin(), std::find_if(s.begin(), s.end(), not_space));
+	s.erase(std::find_if(s.rbegin(), s.rend(), not_space).base(), s.end());
 }
 
 }  // namespace
@@ -114,10 +121,30 @@ void AppState::refresh_request_names_model() {
 	g.set_request_names(make_name_model(names));
 }
 
+void AppState::push_name_edits_to_ui() {
+	auto& g = ui_->global<AppLogic>();
+	if (collections_.empty()) {
+		g.set_collection_name_edit(slint::SharedString(""));
+		g.set_request_name_edit(slint::SharedString(""));
+		return;
+	}
+	if (collection_index_ >= 0 && collection_index_ < static_cast<int>(collections_.size())) {
+		g.set_collection_name_edit(slint::SharedString(collections_[static_cast<size_t>(collection_index_)].name));
+		const auto& col = collections_[static_cast<size_t>(collection_index_)];
+		if (!col.items.empty() && request_index_ >= 0
+				&& request_index_ < static_cast<int>(col.items.size())) {
+			g.set_request_name_edit(slint::SharedString(col.items[static_cast<size_t>(request_index_)].name));
+		} else {
+			g.set_request_name_edit(slint::SharedString(""));
+		}
+	}
+}
+
 void AppState::push_selection_to_ui() {
 	auto& g = ui_->global<AppLogic>();
 	g.set_selected_collection_index(collection_index_);
 	g.set_selected_request_index(request_index_);
+	push_name_edits_to_ui();
 }
 
 void AppState::commit_form_to_current_item() {
@@ -252,6 +279,39 @@ void AppState::duplicate_request() {
 void AppState::save_collections() {
 	commit_form_to_current_item();
 	(void)apikulture::collections_io::save(collections_);
+}
+
+void AppState::commit_collection_name() {
+	if (collections_.empty()) return;
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return;
+	auto& g = ui_->global<AppLogic>();
+	std::string name = to_std_string(g.get_collection_name_edit());
+	trim_in_place(name);
+	if (name.empty()) {
+		push_name_edits_to_ui();
+		return;
+	}
+	collections_[static_cast<size_t>(collection_index_)].name = std::move(name);
+	refresh_collection_names_model();
+	push_selection_to_ui();
+}
+
+void AppState::commit_request_name() {
+	if (collections_.empty()) return;
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return;
+	auto& col = collections_[static_cast<size_t>(collection_index_)];
+	if (col.items.empty()) return;
+	if (request_index_ < 0 || request_index_ >= static_cast<int>(col.items.size())) return;
+	auto& g = ui_->global<AppLogic>();
+	std::string name = to_std_string(g.get_request_name_edit());
+	trim_in_place(name);
+	if (name.empty()) {
+		push_name_edits_to_ui();
+		return;
+	}
+	col.items[static_cast<size_t>(request_index_)].name = std::move(name);
+	refresh_request_names_model();
+	push_selection_to_ui();
 }
 
 void AppState::send_request() {
