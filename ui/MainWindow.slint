@@ -1,5 +1,32 @@
 import { VerticalBox, HorizontalBox, LineEdit, ScrollView, Button, ComboBox, TextEdit, ListView, Palette } from "std-widgets.slint";
 
+/// Draggable vertical bar; `panel-width` is the width of the panel to the left of this splitter.
+component VerticalSplitter inherits Rectangle {
+	in property <length> min-panel-width: 0px;
+	in property <length> max-panel-width: 10000px;
+	in-out property <length> panel-width;
+	width: 6px;
+	vertical-stretch: 1;
+	background: ta.has-hover ? Palette.control-background : Palette.border;
+
+	private property <length> drag-start-width: 0px;
+
+	ta := TouchArea {
+		width: parent.width;
+		height: parent.height;
+		mouse-cursor: MouseCursor.ew-resize;
+		moved => {
+			root.panel-width = Math.max(root.min-panel-width, Math.min(root.max-panel-width,
+				root.drag-start-width + (self.mouse-x - self.pressed-x)));
+		}
+		pointer-event(event) => {
+			if event.button == PointerEventButton.left && event.kind == PointerEventKind.down {
+				root.drag-start-width = root.panel-width;
+			}
+		}
+	}
+}
+
 export global AppLogic {
 	callback send-request();
 	callback cancel-request();
@@ -42,13 +69,16 @@ export component MainWindow inherits Window {
 	min-width: 1000px;
 	min-height: 640px;
 
+	private property <length> collection-panel-width: 240px;
+	private property <length> request-panel-width: 420px;
+
 	HorizontalBox {
 		spacing: 0;
 
 		// --- Left sidebar: collections + requests (Palette follows system light/dark) ---
 		Rectangle {
-			min-width: 220px;
-			max-width: 260px;
+			width: collection-panel-width;
+			vertical-stretch: 1;
 			background: Palette.alternate-background;
 
 			VerticalBox {
@@ -178,15 +208,22 @@ export component MainWindow inherits Window {
 			}
 		}
 
+		VerticalSplitter {
+			panel-width <=> collection-panel-width;
+			min-panel-width: 180px;
+			max-panel-width: 560px;
+		}
+
 		// --- Request | Response (two columns) ---
 		HorizontalBox {
 			padding: 8px;
-			spacing: 12px;
+			spacing: 8px;
 			horizontal-stretch: 1;
 
 			VerticalBox {
 				spacing: 8px;
-				horizontal-stretch: 1;
+				width: request-panel-width;
+				horizontal-stretch: 0;
 				vertical-stretch: 1;
 
 				Text {
@@ -252,15 +289,16 @@ export component MainWindow inherits Window {
 				}
 			}
 
-			Rectangle {
-				width: 1px;
-				background: Palette.border;
-				vertical-stretch: 1;
+			VerticalSplitter {
+				panel-width <=> request-panel-width;
+				min-panel-width: 200px;
+				max-panel-width: 10000px;
 			}
 
 			VerticalBox {
 				spacing: 8px;
 				horizontal-stretch: 1;
+				min-width: 200px;
 				vertical-stretch: 1;
 
 				Text {
