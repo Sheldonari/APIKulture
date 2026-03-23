@@ -27,6 +27,33 @@ component VerticalSplitter inherits Rectangle {
 	}
 }
 
+/// Draggable horizontal bar; `panel-height` is the height of the panel above this splitter.
+component HorizontalSplitter inherits Rectangle {
+	in property <length> min-panel-height: 0px;
+	in property <length> max-panel-height: 10000px;
+	in-out property <length> panel-height;
+	height: 4px;
+	horizontal-stretch: 1;
+	background: ta.has-hover ? Palette.control-background : Palette.border;
+
+	private property <length> drag-start-height: 0px;
+
+	ta := TouchArea {
+		width: parent.width;
+		height: parent.height;
+		mouse-cursor: MouseCursor.ns-resize;
+		moved => {
+			root.panel-height = Math.max(root.min-panel-height, Math.min(root.max-panel-height,
+				root.drag-start-height + (self.mouse-y - self.pressed-y)));
+		}
+		pointer-event(event) => {
+			if event.button == PointerEventButton.left && event.kind == PointerEventKind.down {
+				root.drag-start-height = root.panel-height;
+			}
+		}
+	}
+}
+
 export global AppLogic {
 	callback send-request();
 	callback cancel-request();
@@ -72,9 +99,12 @@ export component MainWindow inherits Window {
 
 	private property <length> collection-panel-width: 240px;
 	private property <length> request-panel-width: 420px;
+	private property <length> sidebar-collections-height: 220px;
 
 	HorizontalBox {
+		// std-widgets HorizontalBox defaults to StyleMetrics.layout-padding (~16px) on all sides.
 		spacing: 0;
+		padding: 0px;
 
 		// --- Left sidebar: collections + requests (Palette follows system light/dark) ---
 		Rectangle {
@@ -86,129 +116,147 @@ export component MainWindow inherits Window {
 				// std-widgets layouts default to StyleMetrics.layout-padding (16px); override explicitly.
 				padding-top: 0px;
 				padding-left: 0px;
-				padding-right: 4px;
+				padding-right: 3px;
 				padding-bottom: 4px;
-				spacing: 4px;
+				spacing: 0px;
 
-				Text {
-					text: "Collections";
-					font-size: 13px;
-					font-weight: 700;
-					color: Palette.foreground;
-				}
-				ListView {
-					min-height: 120px;
-					for name[index] in AppLogic.collection-names: col-touch := TouchArea {
-						height: 28px;
-						Rectangle {
-							width: parent.width;
-							height: parent.height;
-							background: index == AppLogic.selected-collection-index ? Palette.selection-background : (col-touch.has-hover ? Palette.control-background : transparent);
-							border-radius: 3px;
-							if index == AppLogic.selected-collection-index: LineEdit {
-								placeholder-text: "Name";
-								text <=> AppLogic.collection-name-edit;
-								font-size: 13px;
-								x: 4px;
-								y: parent.height / 2 - self.height / 2;
-								width: parent.width - 8px;
-								min-height: 22px;
-								accepted => {
-									AppLogic.commit-collection-name();
+				VerticalBox {
+					height: sidebar-collections-height;
+					vertical-stretch: 0;
+					spacing: 4px;
+
+					Text {
+						text: "Collections";
+						font-size: 13px;
+						font-weight: 700;
+						color: Palette.foreground;
+					}
+					ListView {
+						min-height: 80px;
+						vertical-stretch: 1;
+						for name[index] in AppLogic.collection-names: col-touch := TouchArea {
+							height: 28px;
+							Rectangle {
+								width: parent.width;
+								height: parent.height;
+								background: index == AppLogic.selected-collection-index ? Palette.selection-background : (col-touch.has-hover ? Palette.control-background : transparent);
+								border-radius: 3px;
+								if index == AppLogic.selected-collection-index: LineEdit {
+									placeholder-text: "Name";
+									text <=> AppLogic.collection-name-edit;
+									font-size: 13px;
+									x: 4px;
+									y: parent.height / 2 - self.height / 2;
+									width: parent.width - 8px;
+									min-height: 22px;
+									accepted => {
+										AppLogic.commit-collection-name();
+									}
+								}
+								if index != AppLogic.selected-collection-index: Text {
+									text: name;
+									overflow: elide;
+									font-size: 13px;
+									color: Palette.foreground;
+									x: 6px;
+									y: parent.height / 2 - self.height / 2;
 								}
 							}
-							if index != AppLogic.selected-collection-index: Text {
-								text: name;
-								overflow: elide;
-								font-size: 13px;
-								color: Palette.foreground;
-								x: 6px;
-								y: parent.height / 2 - self.height / 2;
+							clicked => {
+								AppLogic.select-collection(index);
 							}
 						}
-						clicked => {
-							AppLogic.select-collection(index);
-						}
 					}
-				}
-				Button {
-					text: "+ Collection";
-					clicked => {
-						AppLogic.new-collection();
+					Button {
+						text: "+ Collection";
+						clicked => {
+							AppLogic.new-collection();
+						}
 					}
 				}
 
-				Text {
-					text: "Requests";
-					font-size: 13px;
-					font-weight: 700;
-					color: Palette.foreground;
+				HorizontalSplitter {
+					panel-height <=> sidebar-collections-height;
+					min-panel-height: 120px;
+					max-panel-height: 10000px;
 				}
-				ListView {
-					min-height: 140px;
+
+				VerticalBox {
 					vertical-stretch: 1;
-					for name[index] in AppLogic.request-names: req-touch := TouchArea {
-						height: 28px;
-						Rectangle {
-							width: parent.width;
-							height: parent.height;
-							background: index == AppLogic.selected-request-index ? Palette.selection-background : (req-touch.has-hover ? Palette.control-background : transparent);
-							border-radius: 3px;
-							if index == AppLogic.selected-request-index: LineEdit {
-								placeholder-text: "Name";
-								text <=> AppLogic.request-name-edit;
-								font-size: 13px;
-								x: 4px;
-								y: parent.height / 2 - self.height / 2;
-								width: parent.width - 8px;
-								min-height: 22px;
-								accepted => {
-									AppLogic.commit-request-name();
+					spacing: 4px;
+
+					Text {
+						text: "Requests";
+						font-size: 13px;
+						font-weight: 700;
+						color: Palette.foreground;
+					}
+					ListView {
+						min-height: 100px;
+						vertical-stretch: 1;
+						for name[index] in AppLogic.request-names: req-touch := TouchArea {
+							height: 28px;
+							Rectangle {
+								width: parent.width;
+								height: parent.height;
+								background: index == AppLogic.selected-request-index ? Palette.selection-background : (req-touch.has-hover ? Palette.control-background : transparent);
+								border-radius: 3px;
+								if index == AppLogic.selected-request-index: LineEdit {
+									placeholder-text: "Name";
+									text <=> AppLogic.request-name-edit;
+									font-size: 13px;
+									x: 4px;
+									y: parent.height / 2 - self.height / 2;
+									width: parent.width - 8px;
+									min-height: 22px;
+									accepted => {
+										AppLogic.commit-request-name();
+									}
+								}
+								if index != AppLogic.selected-request-index: Text {
+									text: name;
+									overflow: elide;
+									font-size: 13px;
+									color: Palette.foreground;
+									x: 6px;
+									y: parent.height / 2 - self.height / 2;
 								}
 							}
-							if index != AppLogic.selected-request-index: Text {
-								text: name;
-								overflow: elide;
-								font-size: 13px;
-								color: Palette.foreground;
-								x: 6px;
-								y: parent.height / 2 - self.height / 2;
+							clicked => {
+								AppLogic.select-request(index);
 							}
 						}
-						clicked => {
-							AppLogic.select-request(index);
-						}
 					}
-				}
 
-				HorizontalBox {
-					padding: 0px;
-					spacing: 3px;
-					Button {
-						text: "New";
-						clicked => {
-							AppLogic.new-request();
+					HorizontalBox {
+						padding: 0px;
+						spacing: 3px;
+						Button {
+							text: "New";
+							clicked => {
+								AppLogic.new-request();
+							}
+						}
+						Button {
+							text: "Dup";
+							clicked => {
+								AppLogic.duplicate-request();
+							}
+						}
+						Button {
+							text: "Del";
+							clicked => {
+								AppLogic.delete-request();
+							}
 						}
 					}
-					Button {
-						text: "Dup";
-						clicked => {
-							AppLogic.duplicate-request();
-						}
-					}
-					Button {
-						text: "Del";
-						clicked => {
-							AppLogic.delete-request();
-						}
-					}
-				}
 
-				Button {
-					text: "Save all";
-					primary: true;
-					clicked => {
-						AppLogic.save-collections();
+					Button {
+						text: "Save all";
+						primary: true;
+						clicked => {
+							AppLogic.save-collections();
+						}
 					}
 				}
 			}
@@ -223,9 +271,9 @@ export component MainWindow inherits Window {
 		// --- URL bar (full width above Request | Response), then two columns ---
 		VerticalBox {
 			padding-top: 0px;
-			padding-left: 0px;
-			padding-right: 4px;
-			padding-bottom: 4px;
+			padding-left: 3px;
+			padding-right: 0px;
+			padding-bottom: 0px;
 			spacing: 4px;
 			horizontal-stretch: 1;
 			vertical-stretch: 1;
