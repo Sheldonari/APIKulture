@@ -1,40 +1,57 @@
 #include <slint.h>
 #include "MainWindow.h"
 #include "app_state.h"
+#include "platform_color_scheme.h"
 
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 namespace {
 
-slint::cbindgen_private::ColorScheme color_scheme_from_env()
+const char* color_scheme_argv_override(int argc, char** argv)
 {
-	const char* raw = std::getenv("APIKULTURE_COLOR_SCHEME");
+	for (int i = 1; i < argc; ++i) {
+		const char* a = argv[i];
+		if (std::strncmp(a, "--color-scheme=", 15) == 0)
+			return a + 15;
+		if (std::strcmp(a, "--color-scheme") == 0 && i + 1 < argc)
+			return argv[i + 1];
+	}
+	return nullptr;
+}
+
+// For material/fluent styles: Light = light UI, Dark = dark UI (matches Slint MaterialPalette).
+// Returns nullopt = do not call set_window_color_scheme (unknown → follow SlintInternal / OS).
+std::optional<slint::cbindgen_private::ColorScheme> resolve_startup_color_scheme(const char* argv_override)
+{
+	const char* raw = argv_override;
 	if (!raw || !*raw)
-		return slint::cbindgen_private::ColorScheme::Unknown;
-	// Slint naming: Dark = light chrome (bright bg), Light = dark chrome (dark bg)
-	if (std::strcmp(raw, "system") == 0 || std::strcmp(raw, "auto") == 0)
-		return slint::cbindgen_private::ColorScheme::Unknown;
-	if (std::strcmp(raw, "light") == 0)
-		return slint::cbindgen_private::ColorScheme::Dark;
-	if (std::strcmp(raw, "dark") == 0)
-		return slint::cbindgen_private::ColorScheme::Light;
-	return slint::cbindgen_private::ColorScheme::Unknown;
+		raw = std::getenv("APIKULTURE_COLOR_SCHEME");
+	if (raw && *raw) {
+		if (std::strcmp(raw, "light") == 0)
+			return slint::cbindgen_private::ColorScheme::Light;
+		if (std::strcmp(raw, "dark") == 0)
+			return slint::cbindgen_private::ColorScheme::Dark;
+		if (std::strcmp(raw, "system") == 0 || std::strcmp(raw, "auto") == 0)
+			; // fall through to platform detection below
+		else
+			return std::nullopt;
+	}
+	return platform_detect_desktop_color_scheme();
 }
 
 } // namespace
 
 int main(int argc, char** argv) {
-	(void)argc;
-	(void)argv;
-
 	auto ui = MainWindow::create();
 	AppState state(ui);
 
 	// Initialize string properties so they are never in an undefined (null) state when read
 	{
 		auto& g = ui->global<AppLogic>();
-		ui->set_window_color_scheme(color_scheme_from_env());
+		if (auto scheme = resolve_startup_color_scheme(color_scheme_argv_override(argc, argv)))
+			ui->set_window_color_scheme(*scheme);
 		g.set_method(slint::SharedString("GET"));
 		g.set_url(slint::SharedString(""));
 		g.set_request_headers(slint::SharedString(""));

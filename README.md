@@ -51,10 +51,16 @@ Run:
 
 ### Theme (light / dark)
 
-The UI follows the **system** appearance via Slint’s `Palette` (Qt/material/fluent backends read the OS theme). The window background uses `Palette.background` so it stays consistent with widgets.
+The project defaults to Slint’s **`material`** style (`SLINT_STYLE` in CMake). Material/fluent widgets use Slint’s `Palette` and **`Palette.color-scheme` actually changes** light vs dark.
 
-- **CMake**: `SLINT_STYLE` defaults to `qt` when using the Slint package. Avoid styles that are **only** dark (e.g. names ending in `-dark`) if you want light mode on a light OS theme.
-- **Override** (optional): set `APIKULTURE_COLOR_SCHEME` to `light`, `dark`, `system`, or `auto` (`system` / `auto` = follow OS, same as unset).
+The **`qt`** style is different: it copies colors from Qt’s `QApplication` palette and effectively **ignores** `Palette.color-scheme` for drawing, so env vars and `set_window_color_scheme` have almost no visible effect. If you still have an old build with `SLINT_STYLE=qt`, reconfigure with `-DSLINT_STYLE=material` or delete `CMakeCache.txt` and run CMake again.
+
+**Overrides** (material style):
+
+- Environment: `APIKULTURE_COLOR_SCHEME=light` or `=dark` (also `system` / `auto` to detect on Linux).
+- CLI: `--color-scheme=light` or `--color-scheme dark`.
+
+On **Linux**, when unset or `system`/`auto`, detection uses **GNOME `gsettings` first** (including `color-scheme` `'default'` + `gtk-application-prefer-dark-theme`), then **XDG portal** via `ReadOne` (same as Slint’s winit backend), then KDE. If auto-detection fails, use `APIKULTURE_COLOR_SCHEME` or `--color-scheme`.
 
 ### Multiplatform notes
 

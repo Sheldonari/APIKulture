@@ -5,6 +5,12 @@ set(CMAKE_CXX_STANDARD 17)
 
 include(FetchContent)
 
+# Slint: `qt` style mirrors QApplication's palette only — setting Palette.color-scheme from code/env
+# does not change appearance. `material` / `fluent` use Slint's palette and respect color-scheme.
+if(NOT SLINT_STYLE)
+	set(SLINT_STYLE material CACHE STRING "The Slint widget style")
+endif()
+
 # Slint: prefer package, else FetchContent (requires Rust to build from source)
 if(DEFINED ENV{SLINT_DIR})
 	set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};$ENV{SLINT_DIR}")
@@ -44,6 +50,7 @@ endif()
 
 add_executable(apikulture
 	src/main.cpp
+	src/platform_color_scheme.cpp
 	src/app_state.cpp
 	src/http_client.cpp
 	src/collections_io.cpp
