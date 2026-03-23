@@ -214,140 +214,146 @@ export component MainWindow inherits Window {
 			max-panel-width: 560px;
 		}
 
-		// --- Request | Response (two columns) ---
-		HorizontalBox {
+		// --- URL bar (full width above Request | Response), then two columns ---
+		VerticalBox {
 			padding: 8px;
 			spacing: 8px;
 			horizontal-stretch: 1;
+			vertical-stretch: 1;
 
-			VerticalBox {
+			HorizontalBox {
 				spacing: 8px;
-				width: request-panel-width;
-				horizontal-stretch: 0;
-				vertical-stretch: 1;
+				alignment: stretch;
 
-				Text {
-					text: "Request";
-					font-size: 16px;
-					font-weight: 700;
+				ComboBox {
+					current-value <=> AppLogic.method;
+					model: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+					width: 110px;
 				}
 
-				HorizontalBox {
+				LineEdit {
+					placeholder-text: "https://api.example.com/endpoint";
+					text <=> AppLogic.url;
+					horizontal-stretch: 1;
+				}
+
+				Button {
+					text: AppLogic.loading ? "Cancel" : "Send";
+					primary: !AppLogic.loading;
+					clicked => {
+						if (AppLogic.loading) {
+							AppLogic.cancel-request();
+						} else {
+							AppLogic.send-request();
+						}
+					}
+				}
+			}
+
+			HorizontalBox {
+				spacing: 8px;
+				vertical-stretch: 1;
+				horizontal-stretch: 1;
+
+				VerticalBox {
 					spacing: 8px;
-					alignment: start;
+					width: request-panel-width;
+					horizontal-stretch: 0;
+					vertical-stretch: 1;
 
-					ComboBox {
-						current-value <=> AppLogic.method;
-						model: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
-						width: 110px;
+					Text {
+						text: "Request";
+						font-size: 16px;
+						font-weight: 700;
 					}
 
-					LineEdit {
-						placeholder-text: "https://api.example.com/endpoint";
-						text <=> AppLogic.url;
-						horizontal-stretch: 1;
-						min-width: 120px;
+					Text {
+						text: "Headers (one per line: Key: value)";
+						font-size: 12px;
+					}
+					ScrollView {
+						max-height: 140px;
+						vertical-stretch: 0;
+						TextEdit {
+							text <=> AppLogic.request-headers;
+							font-family: "monospace";
+						}
 					}
 
-					Button {
-						text: AppLogic.loading ? "Cancel" : "Send";
-						primary: !AppLogic.loading;
-						clicked => {
-							if (AppLogic.loading) {
-								AppLogic.cancel-request();
-							} else {
-								AppLogic.send-request();
-							}
+					Text {
+						text: "Body";
+						font-size: 12px;
+					}
+					ScrollView {
+						vertical-stretch: 1;
+						min-height: 100px;
+						TextEdit {
+							text <=> AppLogic.request-body;
+							font-family: "monospace";
 						}
 					}
 				}
 
-				Text {
-					text: "Headers (one per line: Key: value)";
-					font-size: 12px;
-				}
-				ScrollView {
-					max-height: 140px;
-					vertical-stretch: 0;
-					TextEdit {
-						text <=> AppLogic.request-headers;
-						font-family: "monospace";
-					}
+				VerticalSplitter {
+					panel-width <=> request-panel-width;
+					min-panel-width: 200px;
+					max-panel-width: 10000px;
 				}
 
-				Text {
-					text: "Body";
-					font-size: 12px;
-				}
-				ScrollView {
+				VerticalBox {
+					spacing: 8px;
+					horizontal-stretch: 1;
+					min-width: 200px;
 					vertical-stretch: 1;
-					min-height: 100px;
-					TextEdit {
-						text <=> AppLogic.request-body;
-						font-family: "monospace";
-					}
-				}
-			}
 
-			VerticalSplitter {
-				panel-width <=> request-panel-width;
-				min-panel-width: 200px;
-				max-panel-width: 10000px;
-			}
-
-			VerticalBox {
-				spacing: 8px;
-				horizontal-stretch: 1;
-				min-width: 200px;
-				vertical-stretch: 1;
-
-				Text {
-					text: "Response";
-					font-size: 16px;
-					font-weight: 700;
-				}
-
-				HorizontalBox {
 					Text {
-						text: "Status: ";
-						font-weight: 600;
+						text: "Response";
+						font-size: 16px;
+						font-weight: 700;
 					}
-					Text {
-						text: AppLogic.response-status;
-						overflow: elide;
-						horizontal-stretch: 1;
-					}
-				}
 
-				Text {
-					text: "Response headers";
-					font-size: 12px;
-				}
-				ScrollView {
-					max-height: 140px;
-					vertical-stretch: 0;
+					HorizontalBox {
+						Text {
+							text: "Status: ";
+							font-weight: 600;
+						}
+						Text {
+							text: AppLogic.response-status;
+							overflow: elide;
+							horizontal-stretch: 1;
+						}
+					}
+
 					Text {
-						width: 100%;
-						text: AppLogic.response-headers;
-						wrap: word-wrap;
-						font-family: "monospace";
+						text: "Response headers";
 						font-size: 12px;
 					}
-				}
+					ScrollView {
+						max-height: 140px;
+						vertical-stretch: 0;
+						Text {
+							width: 100%;
+							text: AppLogic.response-headers;
+							wrap: word-wrap;
+							font-family: "monospace";
+							font-size: 12px;
+						}
+					}
 
-				Text {
-					text: "Response body";
-					font-size: 12px;
-				}
-				ScrollView {
-					vertical-stretch: 1;
-					min-height: 100px;
 					Text {
-						width: 100%;
-						text: AppLogic.response-body;
-						wrap: word-wrap;
-						font-family: "monospace";
+						text: "Response body";
 						font-size: 12px;
+					}
+					ScrollView {
+						vertical-stretch: 1;
+						min-height: 100px;
+						Text {
+							width: 100%;
+							text: AppLogic.response-body;
+							wrap: word-wrap;
+							font-family: "monospace";
+							font-size: 12px;
+						}
 					}
 				}
 			}
