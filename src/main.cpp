@@ -2,6 +2,7 @@
 #include "MainWindow.h"
 #include "app_state.h"
 #include "platform_color_scheme.h"
+#include "theme_watcher.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -41,6 +42,17 @@ std::optional<slint::cbindgen_private::ColorScheme> resolve_startup_color_scheme
 	return platform_detect_desktop_color_scheme();
 }
 
+bool follows_system_theme(int argc, char** argv)
+{
+	const char* a = color_scheme_argv_override(argc, argv);
+	const char* raw = a ? a : std::getenv("APIKULTURE_COLOR_SCHEME");
+	if (!raw || !*raw)
+		return true;
+	if (std::strcmp(raw, "light") == 0 || std::strcmp(raw, "dark") == 0)
+		return false;
+	return true;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -50,8 +62,12 @@ int main(int argc, char** argv) {
 	// Initialize string properties so they are never in an undefined (null) state when read
 	{
 		auto& g = ui->global<AppLogic>();
-		if (auto scheme = resolve_startup_color_scheme(color_scheme_argv_override(argc, argv)))
+		std::optional<slint::cbindgen_private::ColorScheme> initial_scheme;
+		if (auto scheme = resolve_startup_color_scheme(color_scheme_argv_override(argc, argv))) {
+			initial_scheme = *scheme;
 			ui->set_window_color_scheme(*scheme);
+		}
+		start_theme_watcher(ui, follows_system_theme(argc, argv), initial_scheme);
 		g.set_method(slint::SharedString("GET"));
 		g.set_url(slint::SharedString(""));
 		g.set_request_headers(slint::SharedString(""));
@@ -75,5 +91,6 @@ int main(int argc, char** argv) {
 	logic.on_save_collections([&state]() { state.save_collections(); });
 
 	ui->run();
+	stop_theme_watcher();
 	return 0;
 }

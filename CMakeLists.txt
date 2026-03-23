@@ -51,6 +51,7 @@ endif()
 add_executable(apikulture
 	src/main.cpp
 	src/platform_color_scheme.cpp
+	src/theme_watcher.cpp
 	src/app_state.cpp
 	src/http_client.cpp
 	src/collections_io.cpp

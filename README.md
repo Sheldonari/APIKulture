@@ -62,6 +62,8 @@ The **`qt`** style is different: it copies colors from Qt’s `QApplication` pal
 
 On **Linux**, when unset or `system`/`auto`, detection uses **GNOME `gsettings` first** (including `color-scheme` `'default'` + `gtk-application-prefer-dark-theme`), then **XDG portal** via `ReadOne` (same as Slint’s winit backend), then KDE. If auto-detection fails, use `APIKULTURE_COLOR_SCHEME` or `--color-scheme`.
 
+While the app is running, the theme **updates automatically** when you follow the system (no `light`/`dark` forced): a background thread re-checks the desktop preference about every **750 ms** and applies it on the Slint event loop. Forced `APIKULTURE_COLOR_SCHEME=light|dark` or `--color-scheme light|dark` disables live switching so the choice stays fixed.
+
 ### Multiplatform notes
 
 - **Windows**: A console window is shown by default; to hide it, link with `/SUBSYSTEM:WINDOWS` (see Slint docs).
