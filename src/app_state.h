@@ -41,6 +41,8 @@ private:
 	void commit_form_to_current_item();
 	void apply_form_from_current_item();
 	void refresh_response_display();
+	/// Non-null when collections/request indices refer to a valid item.
+	apikulture::RequestItem* mutable_current_request_item();
 	void refresh_collection_names_model();
 	void refresh_request_names_model();
 	void push_name_edits_to_ui();

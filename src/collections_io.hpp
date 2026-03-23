@@ -15,6 +15,13 @@ struct RequestItem {
 	std::string body;
 	/// Optional JSONPath applied to the response body when displaying (e.g. "$.data.items[*]").
 	std::string jsonpath;
+	/// Last completed HTTP response for this request (persisted across sessions).
+	std::string last_response_status;
+	std::string last_response_headers;
+	/// Raw response body from the last successful request; used with `jsonpath` to rebuild the body view.
+	std::string last_response_body_raw;
+	/// If non-empty, last response was an error; message shown as response body (raw body unused).
+	std::string last_response_error;
 };
 
 struct Collection {

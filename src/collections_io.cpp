@@ -14,7 +14,11 @@ void to_json(nlohmann::json& j, const RequestItem& r) {
 	                     {"url", r.url},
 	                     {"headers", r.headers},
 	                     {"body", r.body},
-	                     {"jsonpath", r.jsonpath}};
+	                     {"jsonpath", r.jsonpath},
+	                     {"last_response_status", r.last_response_status},
+	                     {"last_response_headers", r.last_response_headers},
+	                     {"last_response_body_raw", r.last_response_body_raw},
+	                     {"last_response_error", r.last_response_error}};
 }
 
 void from_json(const nlohmann::json& j, RequestItem& r) {
@@ -24,6 +28,10 @@ void from_json(const nlohmann::json& j, RequestItem& r) {
 	r.headers = j.value("headers", std::string());
 	r.body = j.value("body", std::string());
 	r.jsonpath = j.value("jsonpath", std::string());
+	r.last_response_status = j.value("last_response_status", std::string());
+	r.last_response_headers = j.value("last_response_headers", std::string());
+	r.last_response_body_raw = j.value("last_response_body_raw", std::string());
+	r.last_response_error = j.value("last_response_error", std::string());
 }
 
 void to_json(nlohmann::json& j, const Collection& c) {

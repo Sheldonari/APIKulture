@@ -83,6 +83,15 @@ void trim_in_place(std::string& s) {
 
 }  // namespace
 
+apikulture::RequestItem* AppState::mutable_current_request_item() {
+	if (collections_.empty()) return nullptr;
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return nullptr;
+	auto& col = collections_[static_cast<size_t>(collection_index_)];
+	if (col.items.empty()) return nullptr;
+	if (request_index_ < 0 || request_index_ >= static_cast<int>(col.items.size())) return nullptr;
+	return &col.items[static_cast<size_t>(request_index_)];
+}
+
 AppState::AppState(const MainWindowHandle& ui) : ui_(ui) {
 	collections_ = apikulture::collections_io::load_or_default();
 	if (collection_index_ >= static_cast<int>(collections_.size())) {
@@ -195,10 +204,19 @@ void AppState::apply_form_from_current_item() {
 	g.set_request_headers(slint::SharedString(item.headers));
 	g.set_request_body(slint::SharedString(item.body));
 	g.set_response_jsonpath(slint::SharedString(item.jsonpath));
-	last_success_response_body_ = std::nullopt;
-	g.set_response_status(slint::SharedString(""));
-	g.set_response_headers(slint::SharedString(""));
-	g.set_response_body(slint::SharedString(""));
+
+	g.set_response_status(slint::SharedString(item.last_response_status));
+	g.set_response_headers(slint::SharedString(item.last_response_headers));
+	if (!item.last_response_error.empty()) {
+		last_success_response_body_ = std::nullopt;
+		g.set_response_body(slint::SharedString(item.last_response_error));
+	} else if (!item.last_response_body_raw.empty()) {
+		last_success_response_body_ = item.last_response_body_raw;
+		refresh_response_display();
+	} else {
+		last_success_response_body_ = std::nullopt;
+		g.set_response_body(slint::SharedString(""));
+	}
 }
 
 void AppState::init_collections_ui() {
@@ -411,6 +429,21 @@ void AppState::worker_run() {
 		slint::invoke_from_event_loop([this, res]() {
 			auto& g = ui_->global<AppLogic>();
 			g.set_loading(false);
+			if (apikulture::RequestItem* item = mutable_current_request_item()) {
+				item->jsonpath = to_std_string(g.get_response_jsonpath());
+				if (!res.error.empty()) {
+					item->last_response_body_raw.clear();
+					item->last_response_error = res.error;
+					item->last_response_status = "Error: " + res.error;
+					item->last_response_headers.clear();
+				} else {
+					item->last_response_error.clear();
+					item->last_response_status = res.status_line;
+					item->last_response_headers = format_headers(res.headers);
+					item->last_response_body_raw = res.body;
+				}
+				(void)apikulture::collections_io::save(collections_);
+			}
 			if (!res.error.empty()) {
 				last_success_response_body_ = std::nullopt;
 				g.set_response_status(slint::SharedString("Error: " + res.error));
