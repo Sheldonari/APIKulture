@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=APIkulture
+GenericName=REST API client
+Comment=Send HTTP requests and organize collections
+Exec=apikulture
+Icon=apikulture
+Terminal=false
+Type=Application
+Categories=Development;Network;
+Keywords=REST;HTTP;API;client;debug;

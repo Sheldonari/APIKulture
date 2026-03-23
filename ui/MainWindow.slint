@@ -5,7 +5,7 @@ component VerticalSplitter inherits Rectangle {
 	in property <length> min-panel-width: 0px;
 	in property <length> max-panel-width: 10000px;
 	in-out property <length> panel-width;
-	width: 6px;
+	width: 4px;
 	vertical-stretch: 1;
 	background: ta.has-hover ? Palette.control-background : Palette.border;
 
@@ -54,7 +54,7 @@ export global AppLogic {
 	in-out property <string> request-body: "";
 	in property <string> response-status: "";
 	in property <string> response-headers: "";
-	in property <string> response-body: "";
+	in-out property <string> response-body: "";
 	in property <bool> loading: false;
 }
 
@@ -63,6 +63,7 @@ export component MainWindow inherits Window {
 	// `set_window_color_scheme` or env `APIKULTURE_COLOR_SCHEME` (light|dark|system|auto).
 	in-out property <ColorScheme> window-color-scheme <=> Palette.color-scheme;
 	background: Palette.background;
+	icon: @image-url("icons/apikulture.svg");
 	title: "APIkulture";
 	preferred-width: 1100px;
 	preferred-height: 720px;
@@ -82,32 +83,36 @@ export component MainWindow inherits Window {
 			background: Palette.alternate-background;
 
 			VerticalBox {
-				padding: 8px;
-				spacing: 6px;
+				// std-widgets layouts default to StyleMetrics.layout-padding (16px); override explicitly.
+				padding-top: 0px;
+				padding-left: 0px;
+				padding-right: 4px;
+				padding-bottom: 4px;
+				spacing: 4px;
 
 				Text {
 					text: "Collections";
-					font-size: 14px;
+					font-size: 13px;
 					font-weight: 700;
 					color: Palette.foreground;
 				}
 				ListView {
 					min-height: 120px;
 					for name[index] in AppLogic.collection-names: col-touch := TouchArea {
-						height: 32px;
+						height: 28px;
 						Rectangle {
 							width: parent.width;
 							height: parent.height;
 							background: index == AppLogic.selected-collection-index ? Palette.selection-background : (col-touch.has-hover ? Palette.control-background : transparent);
-							border-radius: 4px;
+							border-radius: 3px;
 							if index == AppLogic.selected-collection-index: LineEdit {
 								placeholder-text: "Name";
 								text <=> AppLogic.collection-name-edit;
 								font-size: 13px;
-								x: 6px;
+								x: 4px;
 								y: parent.height / 2 - self.height / 2;
-								width: parent.width - 12px;
-								min-height: 26px;
+								width: parent.width - 8px;
+								min-height: 22px;
 								accepted => {
 									AppLogic.commit-collection-name();
 								}
@@ -117,7 +122,7 @@ export component MainWindow inherits Window {
 								overflow: elide;
 								font-size: 13px;
 								color: Palette.foreground;
-								x: 8px;
+								x: 6px;
 								y: parent.height / 2 - self.height / 2;
 							}
 						}
@@ -135,7 +140,7 @@ export component MainWindow inherits Window {
 
 				Text {
 					text: "Requests";
-					font-size: 14px;
+					font-size: 13px;
 					font-weight: 700;
 					color: Palette.foreground;
 				}
@@ -143,20 +148,20 @@ export component MainWindow inherits Window {
 					min-height: 140px;
 					vertical-stretch: 1;
 					for name[index] in AppLogic.request-names: req-touch := TouchArea {
-						height: 32px;
+						height: 28px;
 						Rectangle {
 							width: parent.width;
 							height: parent.height;
 							background: index == AppLogic.selected-request-index ? Palette.selection-background : (req-touch.has-hover ? Palette.control-background : transparent);
-							border-radius: 4px;
+							border-radius: 3px;
 							if index == AppLogic.selected-request-index: LineEdit {
 								placeholder-text: "Name";
 								text <=> AppLogic.request-name-edit;
 								font-size: 13px;
-								x: 6px;
+								x: 4px;
 								y: parent.height / 2 - self.height / 2;
-								width: parent.width - 12px;
-								min-height: 26px;
+								width: parent.width - 8px;
+								min-height: 22px;
 								accepted => {
 									AppLogic.commit-request-name();
 								}
@@ -166,7 +171,7 @@ export component MainWindow inherits Window {
 								overflow: elide;
 								font-size: 13px;
 								color: Palette.foreground;
-								x: 8px;
+								x: 6px;
 								y: parent.height / 2 - self.height / 2;
 							}
 						}
@@ -177,7 +182,8 @@ export component MainWindow inherits Window {
 				}
 
 				HorizontalBox {
-					spacing: 4px;
+					padding: 0px;
+					spacing: 3px;
 					Button {
 						text: "New";
 						clicked => {
@@ -216,13 +222,17 @@ export component MainWindow inherits Window {
 
 		// --- URL bar (full width above Request | Response), then two columns ---
 		VerticalBox {
-			padding: 8px;
-			spacing: 8px;
+			padding-top: 0px;
+			padding-left: 0px;
+			padding-right: 4px;
+			padding-bottom: 4px;
+			spacing: 4px;
 			horizontal-stretch: 1;
 			vertical-stretch: 1;
 
 			HorizontalBox {
-				spacing: 8px;
+				padding: 0px;
+				spacing: 4px;
 				alignment: stretch;
 
 				ComboBox {
@@ -251,28 +261,30 @@ export component MainWindow inherits Window {
 			}
 
 			HorizontalBox {
-				spacing: 8px;
+				padding: 0px;
+				spacing: 4px;
 				vertical-stretch: 1;
 				horizontal-stretch: 1;
 
 				VerticalBox {
-					spacing: 8px;
+					padding: 0px;
+					spacing: 4px;
 					width: request-panel-width;
 					horizontal-stretch: 0;
 					vertical-stretch: 1;
 
 					Text {
 						text: "Request";
-						font-size: 16px;
+						font-size: 14px;
 						font-weight: 700;
 					}
 
 					Text {
 						text: "Headers (one per line: Key: value)";
-						font-size: 12px;
+						font-size: 11px;
 					}
 					ScrollView {
-						max-height: 140px;
+						max-height: 120px;
 						vertical-stretch: 0;
 						TextEdit {
 							text <=> AppLogic.request-headers;
@@ -282,11 +294,11 @@ export component MainWindow inherits Window {
 
 					Text {
 						text: "Body";
-						font-size: 12px;
+						font-size: 11px;
 					}
 					ScrollView {
 						vertical-stretch: 1;
-						min-height: 100px;
+						min-height: 80px;
 						TextEdit {
 							text <=> AppLogic.request-body;
 							font-family: "monospace";
@@ -301,18 +313,21 @@ export component MainWindow inherits Window {
 				}
 
 				VerticalBox {
-					spacing: 8px;
+					padding: 0px;
+					spacing: 4px;
 					horizontal-stretch: 1;
 					min-width: 200px;
 					vertical-stretch: 1;
 
 					Text {
 						text: "Response";
-						font-size: 16px;
+						font-size: 14px;
 						font-weight: 700;
 					}
 
 					HorizontalBox {
+						padding: 0px;
+						spacing: 4px;
 						Text {
 							text: "Status: ";
 							font-weight: 600;
@@ -326,10 +341,10 @@ export component MainWindow inherits Window {
 
 					Text {
 						text: "Response headers";
-						font-size: 12px;
+						font-size: 11px;
 					}
 					ScrollView {
-						max-height: 140px;
+						max-height: 120px;
 						vertical-stretch: 0;
 						Text {
 							width: 100%;
@@ -342,18 +357,17 @@ export component MainWindow inherits Window {
 
 					Text {
 						text: "Response body";
-						font-size: 12px;
+						font-size: 11px;
 					}
-					ScrollView {
+					// TextEdit embeds ScrollView + TextInput so viewport height is correct (scrollbar appears for long bodies).
+					TextEdit {
+						read-only: true;
+						text <=> AppLogic.response-body;
+						font-family: "monospace";
+						font-size: 12px;
+						wrap: word-wrap;
 						vertical-stretch: 1;
-						min-height: 100px;
-						Text {
-							width: 100%;
-							text: AppLogic.response-body;
-							wrap: word-wrap;
-							font-family: "monospace";
-							font-size: 12px;
-						}
+						min-height: 80px;
 					}
 				}
 			}

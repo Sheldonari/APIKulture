@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 project(apikulture VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
+include(GNUInstallDirs)
 
 include(FetchContent)
 
@@ -77,4 +78,14 @@ if(WIN32)
 			$<TARGET_FILE_DIR:apikulture>
 		COMMAND_EXPAND_LISTS
 	)
+endif()
+
+# Freedesktop icon + launcher (GNOME dock / app menu resolve Icon= by name from hicolor theme)
+if(UNIX AND NOT APPLE)
+	install(TARGETS apikulture RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+	install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/data/apikulture.desktop"
+		DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+	install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/ui/icons/apikulture.svg"
+		DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
+		RENAME apikulture.svg)
 endif()

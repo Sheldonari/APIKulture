@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+	<defs>
+		<linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#FFF59D"/>
+			<stop offset="1" stop-color="#FFD54F"/>
+		</linearGradient>
+		<linearGradient id="wing" x1="0" y1="0" x2="1" y2="1">
+			<stop offset="0" stop-color="#FFFFFF"/>
+			<stop offset="1" stop-color="#E3F2FD"/>
+		</linearGradient>
+		<linearGradient id="hive" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#FFE082"/>
+			<stop offset="0.5" stop-color="#FFB300"/>
+			<stop offset="1" stop-color="#F57C00"/>
+		</linearGradient>
+		<radialGradient id="cheek" cx="50%" cy="50%" r="50%">
+			<stop offset="0" stop-color="#FF8A95"/>
+			<stop offset="1" stop-color="#FF8A95" stop-opacity="0"/>
+		</radialGradient>
+	</defs>
+	<!-- Name tie-in: bee (worker) + hive (colony / "server") — apiculture ↔ API culture -->
+	<g id="hive-server" transform="translate(74 22)">
+		<!-- Stacked honeycomb = hive / home base (the API you return to) -->
+		<g fill="url(#hive)" stroke="#E65100" stroke-width="0.9">
+			<path d="M0 8 L10 14v12L0 32-10 26V14Z"/>
+			<path d="M0 28 L10 34v12L0 52-10 46V34Z"/>
+			<path d="M0 48 L10 54v12L0 72-10 66V54Z"/>
+		</g>
+		<!-- entrance / focal cell: representation hint -->
+		<path d="M0 48 L10 54v12L0 72-10 66V54Z" fill="#26A69A" opacity="0.35"/>
+		<text x="0" y="65" font-family="Consolas, DejaVu Sans Mono, monospace" font-size="8" font-weight="700" fill="#004D40" text-anchor="middle">{ }</text>
+	</g>
+	<!-- trail: pollination / requests toward the hive -->
+	<g fill="#F9A825" opacity="0.85">
+		<circle cx="58" cy="54" r="2.2"/>
+		<circle cx="66" cy="52" r="2.2"/>
+		<circle cx="74" cy="50" r="2.2"/>
+	</g>
+	<path d="M52 56 Q62 50 72 48" fill="none" stroke="#F9A825" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>
+	<!-- bee (client), facing the hive -->
+	<g transform="translate(8 8)">
+		<ellipse cx="34" cy="48" rx="16" ry="11" fill="url(#wing)" opacity="0.9" transform="rotate(-24 34 48)"/>
+		<ellipse cx="34" cy="48" rx="16" ry="11" fill="url(#wing)" opacity="0.55" transform="rotate(8 34 48)"/>
+		<ellipse cx="42" cy="64" rx="15" ry="19" fill="url(#body)"/>
+		<rect x="29" y="57" width="26" height="2.8" rx="1" fill="#5D4037" opacity="0.85"/>
+		<rect x="29" y="63" width="26" height="2.8" rx="1" fill="#5D4037" opacity="0.85"/>
+		<rect x="29" y="69" width="26" height="2.8" rx="1" fill="#5D4037" opacity="0.85"/>
+		<ellipse cx="42" cy="48" rx="12" ry="9" fill="#FFEE58"/>
+		<ellipse cx="52" cy="32" rx="16" ry="15" fill="#FFEE58"/>
+		<ellipse cx="54" cy="34" rx="15" ry="13" fill="#FFF176"/>
+		<!-- face turned slightly toward hive (right) -->
+		<ellipse cx="38" cy="30" rx="4" ry="3" fill="url(#cheek)" opacity="0.45"/>
+		<ellipse cx="60" cy="30" rx="4" ry="3" fill="url(#cheek)" opacity="0.45"/>
+		<ellipse cx="48" cy="28" rx="5.5" ry="6" fill="#FFF"/>
+		<ellipse cx="58" cy="28" rx="5.5" ry="6" fill="#FFF"/>
+		<ellipse cx="48.5" cy="29" rx="3.2" ry="4" fill="#4E342E"/>
+		<ellipse cx="58.5" cy="29" rx="3.2" ry="4" fill="#4E342E"/>
+		<circle cx="50" cy="26" r="1.6" fill="#FFF"/>
+		<circle cx="60" cy="26" r="1.6" fill="#FFF"/>
+		<path d="M48 38 Q52 41 58 38" fill="none" stroke="#6D4C41" stroke-width="1.2" stroke-linecap="round"/>
+		<path d="M46 18 Q44 10 40 7" fill="none" stroke="#5D4037" stroke-width="1.6" stroke-linecap="round"/>
+		<path d="M58 18 Q62 10 66 7" fill="none" stroke="#5D4037" stroke-width="1.6" stroke-linecap="round"/>
+		<circle cx="40" cy="7" r="2" fill="#FFAB91"/>
+		<circle cx="66" cy="7" r="2" fill="#FFAB91"/>
+	</g>
+</svg>
