@@ -1,0 +1,42 @@
+#ifndef APIKULTURE_COLLECTIONS_IO_H
+#define APIKULTURE_COLLECTIONS_IO_H
+
+#include <nlohmann/json.hpp>
+#include <string>
+#include <vector>
+
+namespace apikulture {
+
+struct RequestItem {
+	std::string name{"New request"};
+	std::string method{"GET"};
+	std::string url;
+	std::string headers;
+	std::string body;
+};
+
+struct Collection {
+	std::string name{"Collection"};
+	std::vector<RequestItem> items;
+};
+
+namespace collections_io {
+
+std::string default_config_path();
+
+/// Load collections from disk; on failure returns a single default collection.
+std::vector<Collection> load_or_default();
+
+/// Save all collections; returns false on I/O error.
+bool save(const std::vector<Collection>& collections);
+
+}  // namespace collections_io
+
+void to_json(nlohmann::json& j, const RequestItem& r);
+void from_json(const nlohmann::json& j, RequestItem& r);
+void to_json(nlohmann::json& j, const Collection& c);
+void from_json(const nlohmann::json& j, Collection& c);
+
+}  // namespace apikulture
+
+#endif

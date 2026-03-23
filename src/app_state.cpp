@@ -4,6 +4,9 @@
 #include <sstream>
 #include <string_view>
 #include <algorithm>
+#include <slint/slint_models.h>
+
+namespace {
 
 std::vector<std::pair<std::string, std::string>> parse_headers(const std::string& text) {
 	std::vector<std::pair<std::string, std::string>> out;
@@ -43,7 +46,6 @@ std::string try_pretty_print_json(const std::string& body) {
 	}
 }
 
-// Safe SharedString -> std::string (avoids std::string(nullptr) which throws)
 std::string to_std_string(const slint::SharedString& ss) {
 	std::string_view v;
 	try {
@@ -55,9 +57,24 @@ std::string to_std_string(const slint::SharedString& ss) {
 	return std::string(v.data(), v.size());
 }
 
-AppState::AppState(const MainWindowHandle& ui) : ui_(ui) {}
+}  // namespace
+
+AppState::AppState(const MainWindowHandle& ui) : ui_(ui) {
+	collections_ = apikulture::collections_io::load_or_default();
+	if (collection_index_ >= static_cast<int>(collections_.size())) {
+		collection_index_ = 0;
+	}
+	if (!collections_.empty()) {
+		auto& col = collections_[collection_index_];
+		if (request_index_ >= static_cast<int>(col.items.size())) {
+			request_index_ = 0;
+		}
+	}
+}
 
 AppState::~AppState() {
+	commit_form_to_current_item();
+	apikulture::collections_io::save(collections_);
 	cancel_request();
 	{
 		std::lock_guard<std::mutex> lock(mutex_);
@@ -67,8 +84,179 @@ AppState::~AppState() {
 	if (worker_.joinable()) worker_.join();
 }
 
+std::shared_ptr<slint::VectorModel<slint::SharedString>> AppState::make_name_model(
+		const std::vector<std::string>& names) {
+	auto m = std::make_shared<slint::VectorModel<slint::SharedString>>();
+	for (const auto& n : names) {
+		m->push_back(slint::SharedString(n));
+	}
+	return m;
+}
+
+void AppState::refresh_collection_names_model() {
+	std::vector<std::string> names;
+	names.reserve(collections_.size());
+	for (const auto& c : collections_) {
+		names.push_back(c.name);
+	}
+	auto& g = ui_->global<AppLogic>();
+	g.set_collection_names(make_name_model(names));
+}
+
+void AppState::refresh_request_names_model() {
+	std::vector<std::string> names;
+	if (collection_index_ >= 0 && collection_index_ < static_cast<int>(collections_.size())) {
+		for (const auto& r : collections_[collection_index_].items) {
+			names.push_back(r.name);
+		}
+	}
+	auto& g = ui_->global<AppLogic>();
+	g.set_request_names(make_name_model(names));
+}
+
+void AppState::push_selection_to_ui() {
+	auto& g = ui_->global<AppLogic>();
+	g.set_selected_collection_index(collection_index_);
+	g.set_selected_request_index(request_index_);
+}
+
+void AppState::commit_form_to_current_item() {
+	if (collections_.empty()) return;
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return;
+	auto& col = collections_[collection_index_];
+	if (col.items.empty()) return;
+	if (request_index_ < 0 || request_index_ >= static_cast<int>(col.items.size())) return;
+
+	auto& g = ui_->global<AppLogic>();
+	auto& item = col.items[static_cast<size_t>(request_index_)];
+	item.method = to_std_string(g.get_method());
+	item.url = to_std_string(g.get_url());
+	item.headers = to_std_string(g.get_request_headers());
+	item.body = to_std_string(g.get_request_body());
+	// Keep list label in sync if user only edited URL (optional: derive name from URL — skip for MVP)
+}
+
+void AppState::apply_form_from_current_item() {
+	if (collections_.empty()) return;
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return;
+	auto& col = collections_[collection_index_];
+	if (col.items.empty()) return;
+	if (request_index_ < 0 || request_index_ >= static_cast<int>(col.items.size())) return;
+
+	const auto& item = col.items[static_cast<size_t>(request_index_)];
+	auto& g = ui_->global<AppLogic>();
+	g.set_method(slint::SharedString(item.method));
+	g.set_url(slint::SharedString(item.url));
+	g.set_request_headers(slint::SharedString(item.headers));
+	g.set_request_body(slint::SharedString(item.body));
+	g.set_response_status(slint::SharedString(""));
+	g.set_response_headers(slint::SharedString(""));
+	g.set_response_body(slint::SharedString(""));
+}
+
+void AppState::init_collections_ui() {
+	refresh_collection_names_model();
+	refresh_request_names_model();
+	push_selection_to_ui();
+	apply_form_from_current_item();
+}
+
+void AppState::select_collection(int index) {
+	if (index < 0 || index >= static_cast<int>(collections_.size())) return;
+	commit_form_to_current_item();
+	collection_index_ = index;
+	request_index_ = 0;
+	if (!collections_[static_cast<size_t>(collection_index_)].items.empty()) {
+		if (request_index_ >= static_cast<int>(collections_[static_cast<size_t>(collection_index_)].items.size())) {
+			request_index_ = 0;
+		}
+	}
+	refresh_request_names_model();
+	push_selection_to_ui();
+	apply_form_from_current_item();
+}
+
+void AppState::select_request(int index) {
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return;
+	auto& col = collections_[static_cast<size_t>(collection_index_)];
+	if (index < 0 || index >= static_cast<int>(col.items.size())) return;
+	commit_form_to_current_item();
+	request_index_ = index;
+	push_selection_to_ui();
+	apply_form_from_current_item();
+}
+
+void AppState::new_collection() {
+	commit_form_to_current_item();
+	apikulture::Collection c;
+	c.name = "Collection " + std::to_string(collections_.size() + 1);
+	apikulture::RequestItem r;
+	r.name = "Request 1";
+	c.items.push_back(std::move(r));
+	collections_.push_back(std::move(c));
+	collection_index_ = static_cast<int>(collections_.size()) - 1;
+	request_index_ = 0;
+	refresh_collection_names_model();
+	refresh_request_names_model();
+	push_selection_to_ui();
+	apply_form_from_current_item();
+}
+
+void AppState::new_request() {
+	if (collections_.empty()) return;
+	commit_form_to_current_item();
+	auto& col = collections_[static_cast<size_t>(collection_index_)];
+	apikulture::RequestItem r;
+	r.name = std::string("Request ") + std::to_string(col.items.size() + 1);
+	col.items.push_back(std::move(r));
+	request_index_ = static_cast<int>(col.items.size()) - 1;
+	refresh_request_names_model();
+	push_selection_to_ui();
+	apply_form_from_current_item();
+}
+
+void AppState::delete_request() {
+	if (collections_.empty()) return;
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return;
+	auto& col = collections_[static_cast<size_t>(collection_index_)];
+	if (col.items.empty()) return;
+	if (col.items.size() <= 1) {
+		col.items[0] = apikulture::RequestItem{};
+		col.items[0].name = "Request 1";
+		request_index_ = 0;
+	} else {
+		col.items.erase(col.items.begin() + request_index_);
+		if (request_index_ >= static_cast<int>(col.items.size())) {
+			request_index_ = static_cast<int>(col.items.size()) - 1;
+		}
+	}
+	refresh_request_names_model();
+	push_selection_to_ui();
+	apply_form_from_current_item();
+}
+
+void AppState::duplicate_request() {
+	if (collections_.empty()) return;
+	commit_form_to_current_item();
+	auto& col = collections_[static_cast<size_t>(collection_index_)];
+	if (request_index_ < 0 || request_index_ >= static_cast<int>(col.items.size())) return;
+	apikulture::RequestItem copy = col.items[static_cast<size_t>(request_index_)];
+	copy.name = copy.name + " copy";
+	col.items.insert(col.items.begin() + request_index_ + 1, std::move(copy));
+	request_index_++;
+	refresh_request_names_model();
+	push_selection_to_ui();
+	apply_form_from_current_item();
+}
+
+void AppState::save_collections() {
+	commit_form_to_current_item();
+	(void)apikulture::collections_io::save(collections_);
+}
+
 void AppState::send_request() {
 	if (worker_busy_) return;
+	commit_form_to_current_item();
 
 	auto& g = ui_->global<AppLogic>();
 	pending_method_ = to_std_string(g.get_method());
@@ -140,4 +328,3 @@ void AppState::worker_run() {
 		worker_busy_ = false;
 	}
 }
-
