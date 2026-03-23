@@ -4,7 +4,7 @@
 #include <sstream>
 #include <string_view>
 #include <algorithm>
-#include <slint/slint_models.h>
+#include <slint_models.h>
 
 namespace {
 
