@@ -66,6 +66,7 @@ export global AppLogic {
 	callback save-collections();
 	callback commit-collection-name();
 	callback commit-request-name();
+	callback response-jsonpath-changed();
 
 	in-out property <string> collection-name-edit: "";
 	in-out property <string> request-name-edit: "";
@@ -81,6 +82,7 @@ export global AppLogic {
 	in-out property <string> request-body: "";
 	in property <string> response-status: "";
 	in property <string> response-headers: "";
+	in-out property <string> response-jsonpath: "";
 	in-out property <string> response-body: "";
 	in property <bool> loading: false;
 }
@@ -400,6 +402,20 @@ export component MainWindow inherits Window {
 							wrap: word-wrap;
 							font-family: "monospace";
 							font-size: 12px;
+						}
+					}
+
+					Text {
+						text: "JSONPath";
+						font-size: 11px;
+					}
+					LineEdit {
+						font-family: "monospace";
+						font-size: 12px;
+						placeholder-text: "$.data.items[*].id";
+						text <=> AppLogic.response-jsonpath;
+						edited => {
+							AppLogic.response-jsonpath-changed();
 						}
 					}
 

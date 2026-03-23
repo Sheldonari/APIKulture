@@ -1,5 +1,7 @@
 #include "app_state.h"
 #include "http_client.h"
+#include <jsoncons/json.hpp>
+#include <jsoncons_ext/jsonpath/jsonpath.hpp>
 #include <nlohmann/json.hpp>
 #include <sstream>
 #include <string_view>
@@ -44,6 +46,21 @@ std::string try_pretty_print_json(const std::string& body) {
 		return j.dump(2);
 	} catch (...) {
 		return body;
+	}
+}
+
+std::string format_response_with_jsonpath(const std::string& raw_body, const std::string& path_expr) {
+	if (path_expr.empty()) {
+		return try_pretty_print_json(raw_body);
+	}
+	try {
+		jsoncons::json j = jsoncons::json::parse(raw_body);
+		jsoncons::json result = jsoncons::jsonpath::json_query(j, path_expr);
+		std::string out;
+		result.dump_pretty(out);
+		return out;
+	} catch (const std::exception& ex) {
+		return std::string("JSONPath error: ") + ex.what();
 	}
 }
 
@@ -160,6 +177,7 @@ void AppState::commit_form_to_current_item() {
 	item.url = to_std_string(g.get_url());
 	item.headers = to_std_string(g.get_request_headers());
 	item.body = to_std_string(g.get_request_body());
+	item.jsonpath = to_std_string(g.get_response_jsonpath());
 	// Keep list label in sync if user only edited URL (optional: derive name from URL — skip for MVP)
 }
 
@@ -176,6 +194,8 @@ void AppState::apply_form_from_current_item() {
 	g.set_url(slint::SharedString(item.url));
 	g.set_request_headers(slint::SharedString(item.headers));
 	g.set_request_body(slint::SharedString(item.body));
+	g.set_response_jsonpath(slint::SharedString(item.jsonpath));
+	last_success_response_body_ = std::nullopt;
 	g.set_response_status(slint::SharedString(""));
 	g.set_response_headers(slint::SharedString(""));
 	g.set_response_body(slint::SharedString(""));
@@ -296,6 +316,21 @@ void AppState::commit_collection_name() {
 	push_selection_to_ui();
 }
 
+void AppState::response_jsonpath_changed() {
+	commit_form_to_current_item();
+	refresh_response_display();
+}
+
+void AppState::refresh_response_display() {
+	auto& g = ui_->global<AppLogic>();
+	if (!last_success_response_body_) {
+		return;
+	}
+	std::string path = to_std_string(g.get_response_jsonpath());
+	trim_in_place(path);
+	g.set_response_body(slint::SharedString(format_response_with_jsonpath(*last_success_response_body_, path)));
+}
+
 void AppState::commit_request_name() {
 	if (collections_.empty()) return;
 	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return;
@@ -325,6 +360,7 @@ void AppState::send_request() {
 	pending_body_ = to_std_string(g.get_request_body());
 
 	if (pending_url_.empty()) {
+		last_success_response_body_ = std::nullopt;
 		g.set_response_status(slint::SharedString(""));
 		g.set_response_headers(slint::SharedString(""));
 		g.set_response_body(slint::SharedString("Enter a URL"));
@@ -332,6 +368,7 @@ void AppState::send_request() {
 	}
 
 	cancelled_ = false;
+	last_success_response_body_ = std::nullopt;
 	g.set_loading(true);
 	g.set_response_status(slint::SharedString("Loading..."));
 	g.set_response_headers(slint::SharedString(""));
@@ -375,13 +412,15 @@ void AppState::worker_run() {
 			auto& g = ui_->global<AppLogic>();
 			g.set_loading(false);
 			if (!res.error.empty()) {
+				last_success_response_body_ = std::nullopt;
 				g.set_response_status(slint::SharedString("Error: " + res.error));
 				g.set_response_headers(slint::SharedString(""));
 				g.set_response_body(slint::SharedString(res.error));
 			} else {
+				last_success_response_body_ = res.body;
 				g.set_response_status(slint::SharedString(res.status_line));
 				g.set_response_headers(slint::SharedString(format_headers(res.headers)));
-				g.set_response_body(slint::SharedString(try_pretty_print_json(res.body)));
+				refresh_response_display();
 			}
 		});
 

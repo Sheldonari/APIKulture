@@ -43,6 +43,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
+# jsoncons (JSONPath via jsoncons_ext)
+FetchContent_Declare(
+		jsoncons
+		GIT_REPOSITORY https://github.com/danielaparker/jsoncons.git
+		GIT_TAG v1.6.0
+)
+FetchContent_MakeAvailable(jsoncons)
+
 # OpenSSL for HTTPS (optional but recommended)
 find_package(OpenSSL)
 if(OpenSSL_FOUND)
@@ -61,6 +69,7 @@ add_executable(apikulture
 target_include_directories(apikulture PRIVATE
 	${cpp-httplib_SOURCE_DIR}
 	${nlohmann_json_SOURCE_DIR}/include
+	${jsoncons_SOURCE_DIR}/include
 	${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 

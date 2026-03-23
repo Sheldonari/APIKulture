@@ -6,6 +6,8 @@
 #include <mutex>
 #include <condition_variable>
 #include <memory>
+#include <optional>
+#include <string>
 #include <vector>
 #include "MainWindow.h"
 #include "collections_io.hpp"
@@ -29,6 +31,7 @@ public:
 	void save_collections();
 	void commit_collection_name();
 	void commit_request_name();
+	void response_jsonpath_changed();
 
 	/// Call after MainWindow is created to load data into UI models.
 	void init_collections_ui();
@@ -37,6 +40,7 @@ private:
 	void worker_run();
 	void commit_form_to_current_item();
 	void apply_form_from_current_item();
+	void refresh_response_display();
 	void refresh_collection_names_model();
 	void refresh_request_names_model();
 	void push_name_edits_to_ui();
@@ -56,6 +60,9 @@ private:
 	std::string pending_url_;
 	std::string pending_headers_;
 	std::string pending_body_;
+
+	/// Set only after a successful HTTP response; used with JSONPath to build `response-body`.
+	std::optional<std::string> last_success_response_body_;
 
 	std::vector<apikulture::Collection> collections_;
 	int collection_index_{0};

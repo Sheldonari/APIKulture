@@ -13,6 +13,8 @@ struct RequestItem {
 	std::string url;
 	std::string headers;
 	std::string body;
+	/// Optional JSONPath applied to the response body when displaying (e.g. "$.data.items[*]").
+	std::string jsonpath;
 };
 
 struct Collection {

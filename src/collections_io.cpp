@@ -13,7 +13,8 @@ void to_json(nlohmann::json& j, const RequestItem& r) {
 	                     {"method", r.method},
 	                     {"url", r.url},
 	                     {"headers", r.headers},
-	                     {"body", r.body}};
+	                     {"body", r.body},
+	                     {"jsonpath", r.jsonpath}};
 }
 
 void from_json(const nlohmann::json& j, RequestItem& r) {
@@ -22,6 +23,7 @@ void from_json(const nlohmann::json& j, RequestItem& r) {
 	r.url = j.value("url", std::string());
 	r.headers = j.value("headers", std::string());
 	r.body = j.value("body", std::string());
+	r.jsonpath = j.value("jsonpath", std::string());
 }
 
 void to_json(nlohmann::json& j, const Collection& c) {

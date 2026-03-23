@@ -74,6 +74,7 @@ int main(int argc, char** argv) {
 		g.set_request_body(slint::SharedString(""));
 		g.set_response_status(slint::SharedString(""));
 		g.set_response_headers(slint::SharedString(""));
+		g.set_response_jsonpath(slint::SharedString(""));
 		g.set_response_body(slint::SharedString(""));
 	}
 
@@ -91,6 +92,7 @@ int main(int argc, char** argv) {
 	logic.on_save_collections([&state]() { state.save_collections(); });
 	logic.on_commit_collection_name([&state]() { state.commit_collection_name(); });
 	logic.on_commit_request_name([&state]() { state.commit_request_name(); });
+	logic.on_response_jsonpath_changed([&state]() { state.response_jsonpath_changed(); });
 
 	ui->run();
 	stop_theme_watcher();
