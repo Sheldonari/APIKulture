@@ -5,8 +5,9 @@ A multiplatform REST API tester (Yaak/Insomnia-style) built with C++ and Slint. 
 ## Features
 
 - **Collections & requests (sidebar)**: multiple named collections, each with multiple saved requests; select a row to load method, URL, headers, and body into the editor
-- **Persistence**: collections saved as JSON under `$XDG_CONFIG_HOME/apikulture/collections.json` or `~/.config/apikulture/collections.json` (auto-save on exit; use **Save all** anytime)
-- Actions: **+ Collection**, **New** / **Dup** / **Del** request, **Save all**
+- **Persistence**: collections saved as JSON under `$XDG_CONFIG_HOME/apikulture/collections.json` or `~/.config/apikulture/collections.json` (auto-save on exit; use **Save all** anytime). Each collection has its own **environments** (names, base URL, variables); switching collections updates the environment UI accordingly. Older configs (workspace-level environments) are migrated into each collection on load (`version` 3).
+- Actions: **+ Collection**, **New** / **Dup** / **Del** request, **Save all**, **Import OpenAPI**
+- **OpenAPI 3.x (JSON)**: import a spec into a new collection (one saved request per operation). Path parameters `{id}` become `{{id}}` for your environment variables. Query/header parameters and JSON `requestBody` examples are filled when present. The **Default** environment’s **Base URL** is set from the first `servers[0].url` (relative URLs like `/api/v3` are resolved against the document URL when you import via **Fetch**). Import from a **local file** (button or `--import-openapi=PATH`) or from a **URL** (sidebar field + **Fetch**, or `--import-openapi-url=https://…`). URLs without `http://` / `https://` get `https://` prepended. YAML specs are not read directly—convert with e.g. `yq -o=json openapi.yaml > openapi.json`. **HTTPS** needs OpenSSL when building (same as sending HTTPS requests).
 - HTTP methods: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
 - URL and custom headers (one per line: `Key: value`)
 - Request body (raw/JSON)

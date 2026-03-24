@@ -84,11 +84,24 @@ void from_json(const nlohmann::json& j, RequestItem& r) {
 }
 
 void to_json(nlohmann::json& j, const Collection& c) {
-	j = nlohmann::json{{"name", c.name}, {"items", c.items}};
+	j = nlohmann::json{{"name", c.name},
+	                     {"environments", c.environments},
+	                     {"active_environment_index", c.active_environment_index},
+	                     {"items", c.items}};
 }
 
 void from_json(const nlohmann::json& j, Collection& c) {
 	c.name = j.value("name", std::string("Collection"));
+	c.environments.clear();
+	if (j.contains("environments") && j["environments"].is_array()) {
+		for (const auto& je : j["environments"]) {
+			Environment e;
+			from_json(je, e);
+			if (e.name.empty()) e.name = "Environment";
+			c.environments.push_back(std::move(e));
+		}
+	}
+	c.active_environment_index = j.value("active_environment_index", 0);
 	c.items.clear();
 	if (j.contains("items") && j["items"].is_array()) {
 		for (const auto& it : j["items"]) {
@@ -100,6 +113,12 @@ void from_json(const nlohmann::json& j, Collection& c) {
 	if (c.items.empty()) {
 		c.items.push_back(RequestItem{});
 		c.items.back().name = "Request 1";
+	}
+	if (!c.environments.empty()) {
+		if (c.active_environment_index < 0
+				|| c.active_environment_index >= static_cast<int>(c.environments.size())) {
+			c.active_environment_index = 0;
+		}
 	}
 }
 
@@ -133,11 +152,6 @@ std::string local_environments_path() {
 
 static Workspace make_default_workspace() {
 	Workspace w;
-	w.environments.clear();
-	Environment def;
-	def.name = "Default";
-	w.environments.push_back(std::move(def));
-	w.active_environment_index = 0;
 	Collection c;
 	c.name = "Default";
 	c.items.push_back(RequestItem{});
@@ -149,16 +163,17 @@ static Workspace make_default_workspace() {
 static void parse_collections_array(const nlohmann::json& root, Workspace& w) {
 	w.collections.clear();
 	if (!root.contains("collections") || !root["collections"].is_array()) {
-		Collection c{"Default", {}};
+		Collection c;
+		c.name = "Default";
 		c.items.push_back(RequestItem{});
 		c.items[0].name = "Request 1";
 		w.collections.push_back(std::move(c));
 		return;
 	}
 	for (const auto& jc : root["collections"]) {
-		Collection c;
-		apikulture::from_json(jc, c);
-		w.collections.push_back(std::move(c));
+		Collection col;
+		apikulture::from_json(jc, col);
+		w.collections.push_back(std::move(col));
 	}
 	if (w.collections.empty()) {
 		Collection c;
@@ -169,24 +184,34 @@ static void parse_collections_array(const nlohmann::json& root, Workspace& w) {
 	}
 }
 
-static void migrate_environments(const nlohmann::json& root, Workspace& w) {
-	w.environments.clear();
+/// Old files stored `environments` at workspace root; copy into any collection that has none (v1/v2 → v3).
+static void migrate_legacy_workspace_environments_to_collections(const nlohmann::json& root, Workspace& w) {
+	std::vector<Environment> legacy;
+	int legacy_idx = 0;
 	if (root.contains("environments") && root["environments"].is_array() && !root["environments"].empty()) {
 		for (const auto& je : root["environments"]) {
 			Environment e;
 			apikulture::from_json(je, e);
 			if (e.name.empty()) e.name = "Environment";
-			w.environments.push_back(std::move(e));
+			legacy.push_back(std::move(e));
 		}
-	} else {
-		Environment e;
-		e.name = "Default";
-		w.environments.push_back(std::move(e));
+		legacy_idx = root.value("active_environment_index", 0);
+		if (legacy_idx < 0 || legacy_idx >= static_cast<int>(legacy.size())) legacy_idx = 0;
 	}
-	w.active_environment_index = root.value("active_environment_index", 0);
-	if (w.active_environment_index < 0
-			|| w.active_environment_index >= static_cast<int>(w.environments.size())) {
-		w.active_environment_index = 0;
+	for (auto& col : w.collections) {
+		if (col.environments.empty() && !legacy.empty()) {
+			col.environments = legacy;
+			col.active_environment_index = legacy_idx;
+		}
+		if (col.environments.empty()) {
+			Environment def;
+			def.name = "Default";
+			col.environments.push_back(std::move(def));
+			col.active_environment_index = 0;
+		} else if (col.active_environment_index < 0
+				|| col.active_environment_index >= static_cast<int>(col.environments.size())) {
+			col.active_environment_index = 0;
+		}
 	}
 }
 
@@ -202,7 +227,7 @@ Workspace load_workspace_or_default() {
 		const int version = root.value("version", 1);
 		(void)version;
 		parse_collections_array(root, w);
-		migrate_environments(root, w);
+		migrate_legacy_workspace_environments_to_collections(root, w);
 		return w;
 	} catch (...) {
 		return make_default_workspace();
@@ -214,9 +239,7 @@ bool save_workspace(const Workspace& workspace) {
 	try {
 		fs::create_directories(fs::path(path).parent_path());
 		nlohmann::json root;
-		root["version"] = 2;
-		root["active_environment_index"] = workspace.active_environment_index;
-		root["environments"] = workspace.environments;
+		root["version"] = 3;
 		root["collections"] = workspace.collections;
 		std::ofstream out(path, std::ios::trunc);
 		if (!out) return false;

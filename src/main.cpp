@@ -5,6 +5,7 @@
 #include "theme_watcher.h"
 #include "window_state.hpp"
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -24,6 +25,26 @@ const char* color_scheme_argv_override(int argc, char** argv)
 			return a + 15;
 		if (std::strcmp(a, "--color-scheme") == 0 && i + 1 < argc)
 			return argv[i + 1];
+	}
+	return nullptr;
+}
+
+const char* import_openapi_argv_path(int argc, char** argv)
+{
+	for (int i = 1; i < argc; ++i) {
+		const char* a = argv[i];
+		if (std::strncmp(a, "--import-openapi=", 19) == 0)
+			return a + 19;
+	}
+	return nullptr;
+}
+
+const char* import_openapi_argv_url(int argc, char** argv)
+{
+	for (int i = 1; i < argc; ++i) {
+		const char* a = argv[i];
+		if (std::strncmp(a, "--import-openapi-url=", 23) == 0)
+			return a + 23;
 	}
 	return nullptr;
 }
@@ -73,6 +94,17 @@ static std::string shared_string_to_std(const slint::SharedString& ss)
 } // namespace
 
 int main(int argc, char** argv) {
+	for (int i = 1; i < argc; ++i) {
+		if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
+			std::fprintf(stderr,
+					"Usage: apikulture [options]\n"
+					"  --color-scheme=light|dark|system|auto\n"
+					"  --import-openapi=PATH   Import OpenAPI 3.x JSON file after startup\n"
+					"  --import-openapi-url=URL   Fetch OpenAPI 3.x JSON over HTTP(S) after startup\n");
+			return 0;
+		}
+	}
+
 	auto ui = MainWindow::create();
 	AppState state(ui);
 
@@ -85,6 +117,8 @@ int main(int argc, char** argv) {
 			ui->set_window_color_scheme(*scheme);
 		}
 		start_theme_watcher(ui, follows_system_theme(argc, argv), initial_scheme);
+		g.set_import_status(slint::SharedString(""));
+		g.set_openapi_import_url(slint::SharedString(""));
 		g.set_method(slint::SharedString("GET"));
 		g.set_url(slint::SharedString(""));
 		g.set_request_headers(slint::SharedString(""));
@@ -122,16 +156,30 @@ int main(int argc, char** argv) {
 
 	state.init_collections_ui();
 
+	if (const char* oa = import_openapi_argv_path(argc, argv)) {
+		if (*oa)
+			state.import_openapi_from_path(std::string(oa));
+	}
+	if (const char* ou = import_openapi_argv_url(argc, argv)) {
+		if (*ou)
+			state.import_openapi_from_url_string(std::string(ou));
+	}
+
 	auto& logic = ui->global<AppLogic>();
 	logic.on_send_request([&state]() { state.send_request(); });
 	logic.on_cancel_request([&state]() { state.cancel_request(); });
 	logic.on_select_collection([&state](int i) { state.select_collection(i); });
 	logic.on_select_request([&state](int i) { state.select_request(i); });
 	logic.on_new_collection([&state]() { state.new_collection(); });
+	logic.on_delete_collection([&state]() { state.delete_collection(); });
+	logic.on_collection_delete_dialog_cancel([&state]() { state.collection_delete_dialog_cancel(); });
+	logic.on_collection_delete_dialog_confirm([&state]() { state.collection_delete_dialog_confirm(); });
 	logic.on_new_request([&state]() { state.new_request(); });
 	logic.on_delete_request([&state]() { state.delete_request(); });
 	logic.on_duplicate_request([&state]() { state.duplicate_request(); });
 	logic.on_save_collections([&state]() { state.save_collections(); });
+	logic.on_import_openapi([&state]() { state.import_openapi_dialog(); });
+	logic.on_import_openapi_url([&state]() { state.import_openapi_from_url_ui(); });
 	logic.on_environment_changed([&state](slint::SharedString name) {
 		state.environment_changed(shared_string_to_std(name));
 	});

@@ -33,13 +33,13 @@ struct RequestItem {
 
 struct Collection {
 	std::string name{"Collection"};
+	std::vector<Environment> environments{{Environment{}}};
+	int active_environment_index{0};
 	std::vector<RequestItem> items;
 };
 
-/// All persisted workspace data (collections + environments). Root JSON file is `collections.json`.
+/// All persisted workspace data. Root JSON file is `collections.json` (version 3: environments live per collection).
 struct Workspace {
-	std::vector<Environment> environments{{Environment{}}};
-	int active_environment_index{0};
 	std::vector<Collection> collections;
 };
 

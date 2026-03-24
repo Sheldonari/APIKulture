@@ -12,6 +12,7 @@
 #include <map>
 #include "MainWindow.h"
 #include "collections_io.hpp"
+#include "openapi_import.hpp"
 
 class AppState {
 public:
@@ -26,10 +27,17 @@ public:
 	void select_collection(int index);
 	void select_request(int index);
 	void new_collection();
+	void delete_collection();
+	void collection_delete_dialog_cancel();
+	void collection_delete_dialog_confirm();
 	void new_request();
 	void delete_request();
 	void duplicate_request();
 	void save_collections();
+	void import_openapi_dialog();
+	void import_openapi_from_path(const std::string& path_utf8);
+	void import_openapi_from_url_string(const std::string& url_utf8);
+	void import_openapi_from_url_ui();
 	void commit_collection_name();
 	void commit_request_name();
 	void response_jsonpath_changed();
@@ -59,6 +67,7 @@ private:
 	void push_response_body(const std::string& text);
 	/// Non-null when collections/request indices refer to a valid item.
 	apikulture::RequestItem* mutable_current_request_item();
+	apikulture::Collection* mutable_current_collection();
 	apikulture::Environment* mutable_active_environment();
 	void refresh_collection_names_model();
 	void refresh_request_names_model();
@@ -68,6 +77,7 @@ private:
 	void push_name_edits_to_ui();
 	void push_selection_to_ui();
 	void refresh_query_param_models();
+	void apply_openapi_import_result(apikulture::openapi::ImportResult&& result);
 	std::shared_ptr<slint::VectorModel<slint::SharedString>> make_name_model(
 			const std::vector<std::string>& names);
 
@@ -94,6 +104,8 @@ private:
 	int request_index_{0};
 	std::shared_ptr<slint::VectorModel<slint::SharedString>> query_param_keys_model_;
 	std::shared_ptr<slint::VectorModel<slint::SharedString>> query_param_values_model_;
+	/// Collection index to remove after Slint delete confirmation; -1 when not applicable.
+	int pending_delete_collection_index_{-1};
 };
 
 #endif  // APIKULTURE_APP_STATE_H

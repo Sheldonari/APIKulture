@@ -67,6 +67,8 @@ add_executable(apikulture
 	src/environment.cpp
 	src/query_string.cpp
 	src/window_state.cpp
+	src/openapi_import.cpp
+	src/file_dialog.cpp
 )
 
 target_include_directories(apikulture PRIVATE
@@ -78,6 +80,10 @@ target_include_directories(apikulture PRIVATE
 
 if(OpenSSL_FOUND)
 	target_link_libraries(apikulture PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+endif()
+
+if(WIN32)
+	target_link_libraries(apikulture PRIVATE comdlg32)
 endif()
 
 slint_target_sources(apikulture ui/MainWindow.slint)

@@ -281,10 +281,13 @@ export global AppLogic {
 	callback select-collection(int);
 	callback select-request(int);
 	callback new-collection();
+	callback delete-collection();
 	callback new-request();
 	callback delete-request();
 	callback duplicate-request();
 	callback save-collections();
+	callback import-openapi();
+	callback import-openapi-url();
 	callback environment-changed(string);
 	callback new-environment();
 	callback delete-environment();
@@ -300,6 +303,8 @@ export global AppLogic {
 	callback response-font-selected(int);
 	callback adjust-response-font-size(int);
 	callback commit-response-font-size(float);
+	callback collection-delete-dialog-cancel();
+	callback collection-delete-dialog-confirm();
 
 	in-out property <string> collection-name-edit: "";
 	in-out property <string> request-name-edit: "";
@@ -331,6 +336,13 @@ export global AppLogic {
 	in property <[string]> response-font-names: [];
 	in-out property <int> response-font-index: 0;
 	in property <bool> loading: false;
+	/// Result or error message after “Import OpenAPI”; empty when unused.
+	in-out property <string> import-status: "";
+	/// OpenAPI JSON document URL for “Fetch”.
+	in-out property <string> openapi-import-url: "";
+	in-out property <bool> collection-delete-dialog-open: false;
+	in-out property <bool> collection-delete-dialog-info-only: false;
+	in-out property <string> collection-delete-dialog-text: "";
 }
 
 export component MainWindow inherits Window {
@@ -455,10 +467,24 @@ export component MainWindow inherits Window {
 							}
 						}
 					}
-					RectButton {
-						text: "+ Collection";
-						clicked => {
-							AppLogic.new-collection();
+					HorizontalBox {
+						padding: 0px;
+						spacing: 3px;
+						RectButton {
+							text: "+ Collection";
+							horizontal-stretch: 1;
+							clicked => {
+								AppLogic.new-collection();
+							}
+						}
+						RectButton {
+							text: "Del";
+							min-btn-width: 36px;
+							pad-h: 6px;
+							enabled: AppLogic.collection-names.length > 1;
+							clicked => {
+								AppLogic.delete-collection();
+							}
 						}
 					}
 				}
@@ -546,6 +572,42 @@ export component MainWindow inherits Window {
 						clicked => {
 							AppLogic.save-collections();
 						}
+					}
+
+					RectButton {
+						text: "Import OpenAPI";
+						clicked => {
+							AppLogic.import-openapi();
+						}
+					}
+
+					Text {
+						text: "OpenAPI URL (JSON)";
+						font-size: 11px;
+						color: Palette.foreground;
+					}
+					HorizontalBox {
+						padding: 0px;
+						spacing: 3px;
+						CompactLineEdit {
+							placeholder-text: "https://api.example.com/openapi.json";
+							text <=> AppLogic.openapi-import-url;
+							horizontal-stretch: 1;
+							font-size: 12px;
+						}
+						RectButton {
+							text: "Fetch";
+							clicked => {
+								AppLogic.import-openapi-url();
+							}
+						}
+					}
+
+					if AppLogic.import-status != "": Text {
+						text: AppLogic.import-status;
+						font-size: 10px;
+						color: Palette.foreground;
+						wrap: word-wrap;
 					}
 
 					Text {
@@ -662,6 +724,13 @@ export component MainWindow inherits Window {
 					placeholder-text: "/v1/resource or https://host/path";
 					text <=> AppLogic.url;
 					horizontal-stretch: 1;
+					accepted => {
+						if (AppLogic.loading) {
+							AppLogic.cancel-request();
+						} else {
+							AppLogic.send-request();
+						}
+					}
 				}
 
 				RectButton {
@@ -1008,6 +1077,70 @@ export component MainWindow inherits Window {
 				}
 			}
 		}
+		}
+		}
+
+		if AppLogic.collection-delete-dialog-open: Rectangle {
+			width: 100%;
+			height: 100%;
+			// Opaque dim (ARGB alpha 0xFF); blocks the window behind.
+			background: #FF000000;
+
+			backdrop-dismiss := TouchArea {
+				width: 100%;
+				height: 100%;
+				clicked => {
+					AppLogic.collection-delete-dialog-cancel();
+				}
+			}
+
+			Rectangle {
+				x: (parent.width - self.width) / 2;
+				y: (parent.height - self.height) / 2;
+				width: min(parent.width - 48px, 420px);
+				height: min(parent.height - 464px, 240px);
+				background: Palette.control-background.mix(Palette.background, 0.015);
+				border-width: 1px;
+				border-color: Palette.border;
+				border-radius: 8px;
+				clip: true;
+
+				VerticalBox {
+					padding: 16px;
+					spacing: 14px;
+					vertical-stretch: 1;
+					Text {
+						text: AppLogic.collection-delete-dialog-text;
+						wrap: word-wrap;
+						font-size: 13px;
+						color: Palette.foreground;
+						width: 100%;
+						vertical-stretch: 1;
+					}
+					HorizontalBox {
+						spacing: 8px;
+						alignment: end;
+						if AppLogic.collection-delete-dialog-info-only: RectButton {
+							text: "OK";
+							clicked => {
+								AppLogic.collection-delete-dialog-confirm();
+							}
+						}
+						if !AppLogic.collection-delete-dialog-info-only: RectButton {
+							text: "Cancel";
+							clicked => {
+								AppLogic.collection-delete-dialog-cancel();
+							}
+						}
+						if !AppLogic.collection-delete-dialog-info-only: RectButton {
+							text: "Delete";
+							primary: true;
+							clicked => {
+								AppLogic.collection-delete-dialog-confirm();
+							}
+						}
+					}
+				}
 			}
 		}
 	}
