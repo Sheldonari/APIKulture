@@ -7,7 +7,12 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <optional>
+#include <string>
+#include <string_view>
+
+#include <slint_models.h>
 
 namespace {
 
@@ -54,6 +59,17 @@ bool follows_system_theme(int argc, char** argv)
 	return true;
 }
 
+static std::string shared_string_to_std(const slint::SharedString& ss)
+{
+	try {
+		std::string_view v = static_cast<std::string_view>(ss);
+		if (v.data() == nullptr || v.empty()) return std::string();
+		return std::string(v.data(), v.size());
+	} catch (...) {
+		return std::string();
+	}
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -77,10 +93,26 @@ int main(int argc, char** argv) {
 		g.set_response_headers(slint::SharedString(""));
 		g.set_response_jsonpath(slint::SharedString(""));
 		g.set_response_body(slint::SharedString(""));
-	}
-
-	if (apikulture::window_state::load_main_window_maximized()) {
-		ui->window().set_maximized(true);
+		{
+			auto font_model = std::make_shared<slint::VectorModel<slint::SharedString>>();
+			for (const char* f : apikulture::window_state::k_response_font_choices) {
+				font_model->push_back(slint::SharedString(f));
+			}
+			g.set_response_font_names(font_model);
+		}
+		const auto ws = apikulture::window_state::load_window_session();
+		g.set_response_font_index(apikulture::window_state::response_font_choice_index(
+				ws.response_body_font_family));
+		g.set_response_body_font_family(
+				slint::SharedString(ws.response_body_font_family));
+		g.set_response_body_font_size(ws.response_body_font_size_px);
+		ui->set_collection_panel_width(ws.collection_panel_width_px);
+		ui->set_request_panel_width(ws.request_panel_width_px);
+		ui->set_sidebar_collections_height(ws.sidebar_collections_height_px);
+		ui->set_response_headers_panel_height(ws.response_headers_panel_height_px);
+		if (ws.maximized) {
+			ui->window().set_maximized(true);
+		}
 	}
 
 	state.init_collections_ui();
@@ -98,9 +130,23 @@ int main(int argc, char** argv) {
 	logic.on_commit_collection_name([&state]() { state.commit_collection_name(); });
 	logic.on_commit_request_name([&state]() { state.commit_request_name(); });
 	logic.on_response_jsonpath_changed([&state]() { state.response_jsonpath_changed(); });
+	logic.on_response_font_selected([&state](int i) { state.apply_response_font_index(i); });
+	logic.on_adjust_response_font_size([&state](int d) { state.adjust_response_font_size(d); });
+	logic.on_commit_response_font_size([&state](float px) { state.commit_response_font_size(px); });
 
 	ui->run();
-	apikulture::window_state::save_main_window_maximized(ui->window().is_maximized());
+	{
+		auto& g = ui->global<AppLogic>();
+		apikulture::window_state::PersistedWindowState snapshot;
+		snapshot.maximized = ui->window().is_maximized();
+		snapshot.response_body_font_family = shared_string_to_std(g.get_response_body_font_family());
+		snapshot.response_body_font_size_px = g.get_response_body_font_size();
+		snapshot.collection_panel_width_px = ui->get_collection_panel_width();
+		snapshot.request_panel_width_px = ui->get_request_panel_width();
+		snapshot.sidebar_collections_height_px = ui->get_sidebar_collections_height();
+		snapshot.response_headers_panel_height_px = ui->get_response_headers_panel_height();
+		apikulture::window_state::save_window_session(snapshot);
+	}
 	stop_theme_watcher();
 	return 0;
 }

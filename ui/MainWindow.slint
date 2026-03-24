@@ -1,4 +1,58 @@
-import { VerticalBox, HorizontalBox, LineEdit, ScrollView, Button, ComboBox, TextEdit, ListView, Palette } from "std-widgets.slint";
+import { VerticalBox, HorizontalBox, LineEdit, ScrollView, ComboBox, TextEdit, ListView, Palette, Slider } from "std-widgets.slint";
+
+/// Filled-style push button with sharp corners (Material `Button` uses a large pill radius).
+component RectButton inherits Rectangle {
+	in property <string> text: "";
+	in property <bool> primary: false;
+	in property <bool> enabled: true;
+	/// Minimum height (toolbar / “Aa” uses a shorter value).
+	in property <length> min-btn-height: 40px;
+	/// Minimum width; keep at least touch-target size unless parent overrides width/height.
+	in property <length> min-btn-width: 40px;
+	in property <length> pad-h: 16px;
+	in property <length> pad-v: 6px;
+	callback clicked;
+
+	border-width: 0px;
+	border-radius: 3px;
+	clip: true;
+	min-height: min-btn-height;
+	min-width: min-btn-width;
+	horizontal-stretch: 0;
+	vertical-stretch: 0;
+
+	states [
+		disabled when !root.enabled: {
+			root.opacity: 0.38;
+		}
+	]
+
+	background: root.primary ? Palette.accent-background : Palette.control-background;
+
+	HorizontalLayout {
+		padding-left: pad-h;
+		padding-right: pad-h;
+		padding-top: pad-v;
+		padding-bottom: pad-v;
+		alignment: center;
+		Text {
+			text: root.text;
+			color: root.primary ? Palette.accent-foreground : Palette.control-foreground;
+			vertical-alignment: center;
+			horizontal-alignment: center;
+			font-weight: 500;
+		}
+	}
+
+	TouchArea {
+		enabled: root.enabled;
+		width: 100%;
+		height: 100%;
+		clicked => {
+			root.clicked();
+		}
+	}
+}
 
 /// Single-line field shorter than Material LineEdit default (~56px).
 component CompactLineEdit inherits LineEdit {
@@ -61,6 +115,166 @@ component HorizontalSplitter inherits Rectangle {
 	}
 }
 
+/// Response font dropdown; closed row shows the font name centered between horizontal padding.
+/// When `embed-list` is true, the list opens inline (no nested `PopupWindow`) — required inside another `PopupWindow` whose default close policy would dismiss the parent on click.
+component ResponseFontPicker inherits Rectangle {
+	in property <[string]> fonts;
+	in-out property <int> current-index: 0;
+	in property <bool> embed-list: false;
+	callback picked(int);
+
+	private property <length> row-h: 28px;
+	private property <bool> list-open: false;
+
+	min-width: 160px;
+	min-height: embed-list ? (list-open ? 28px + min(6 * row-h + 8px, fonts.length * row-h + 8px) : 28px) : 28px;
+	max-height: embed-list ? 10000px : 28px;
+	vertical-stretch: 0;
+	horizontal-stretch: 1;
+	max-width: 320px;
+	border-width: 1px;
+	border-color: Palette.border;
+	border-radius: 4px;
+	background: Palette.control-background;
+	clip: false;
+
+	VerticalLayout {
+		spacing: 0px;
+		padding: 0px;
+
+		Rectangle {
+			height: 28px;
+			vertical-stretch: 0;
+			background: transparent;
+
+			HorizontalLayout {
+				padding-left: 10px;
+				padding-right: 8px;
+				spacing: 4px;
+				Text {
+					text: root.current-index >= 0 && root.current-index < root.fonts.length ? root.fonts[root.current-index] : "";
+					horizontal-alignment: center;
+					vertical-alignment: center;
+					horizontal-stretch: 1;
+					color: Palette.control-foreground;
+					font-size: 12px;
+					overflow: elide;
+				}
+				Text {
+					text: root.list-open ? "▴" : "▾";
+					vertical-alignment: center;
+					font-size: 11px;
+					color: Palette.control-foreground;
+				}
+			}
+
+			TouchArea {
+				width: 100%;
+				height: 100%;
+				clicked => {
+					if root.embed-list {
+						root.list-open = !root.list-open;
+					} else {
+						popup.show();
+					}
+				}
+			}
+		}
+
+		if root.embed-list && root.list-open: Rectangle {
+			vertical-stretch: 0;
+			height: min(6 * root.row-h + 8px, root.fonts.length * root.row-h + 8px);
+			background: Palette.alternate-background;
+			border-width: 1px;
+			border-color: Palette.border;
+			border-radius: 4px;
+
+			ScrollView {
+				width: 100%;
+				height: 100%;
+				VerticalLayout {
+					padding: 4px;
+					alignment: start;
+					for label[idx] in root.fonts: embed-row := TouchArea {
+						height: root.row-h;
+						width: 100%;
+						Rectangle {
+							width: 100%;
+							height: 100%;
+							background: idx == root.current-index ? Palette.selection-background : (embed-row.has-hover ? Palette.control-background : transparent);
+							border-radius: 3px;
+							Text {
+								text: label;
+								font-size: 12px;
+								color: Palette.foreground;
+								x: 8px;
+								y: (parent.height - self.height) / 2;
+								width: parent.width - 16px;
+								overflow: elide;
+							}
+						}
+						clicked => {
+							root.current-index = idx;
+							root.picked(idx);
+							root.list-open = false;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	popup := PopupWindow {
+		x: 0px;
+		y: root.height + 2px;
+		width: max(root.width, 200px);
+		height: min(6 * root.row-h + 8px, root.fonts.length * root.row-h + 8px);
+		close-policy: close-on-click-outside;
+
+		Rectangle {
+			width: 100%;
+			height: 100%;
+			background: Palette.alternate-background;
+			border-width: 1px;
+			border-color: Palette.border;
+			border-radius: 4px;
+
+			ScrollView {
+				width: 100%;
+				height: 100%;
+				VerticalLayout {
+					padding: 4px;
+					alignment: start;
+					for label[idx] in root.fonts: row-touch := TouchArea {
+						height: root.row-h;
+						width: 100%;
+						Rectangle {
+							width: 100%;
+							height: 100%;
+							background: idx == root.current-index ? Palette.selection-background : (row-touch.has-hover ? Palette.control-background : transparent);
+							border-radius: 3px;
+							Text {
+								text: label;
+								font-size: 12px;
+								color: Palette.foreground;
+								x: 8px;
+								y: (parent.height - self.height) / 2;
+								width: parent.width - 16px;
+								overflow: elide;
+							}
+						}
+						clicked => {
+							root.current-index = idx;
+							root.picked(idx);
+							popup.close();
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 export global AppLogic {
 	callback send-request();
 	callback cancel-request();
@@ -74,6 +288,9 @@ export global AppLogic {
 	callback commit-collection-name();
 	callback commit-request-name();
 	callback response-jsonpath-changed();
+	callback response-font-selected(int);
+	callback adjust-response-font-size(int);
+	callback commit-response-font-size(float);
 
 	in-out property <string> collection-name-edit: "";
 	in-out property <string> request-name-edit: "";
@@ -91,6 +308,10 @@ export global AppLogic {
 	in property <string> response-headers: "";
 	in-out property <string> response-jsonpath: "";
 	in-out property <string> response-body: "";
+	in-out property <string> response-body-font-family: "monospace";
+	in-out property <float> response-body-font-size: 12;
+	in property <[string]> response-font-names: [];
+	in-out property <int> response-font-index: 0;
 	in property <bool> loading: false;
 }
 
@@ -106,11 +327,48 @@ export component MainWindow inherits Window {
 	min-width: 1000px;
 	min-height: 640px;
 
-	private property <length> collection-panel-width: 240px;
-	private property <length> request-panel-width: 420px;
-	private property <length> sidebar-collections-height: 220px;
+	in-out property <length> collection-panel-width: 240px;
+	in-out property <length> request-panel-width: 420px;
+	in-out property <length> sidebar-collections-height: 220px;
+	/// Height of the response headers block (label + scroll area) above the horizontal splitter.
+	in-out property <length> response-headers-panel-height: 120px;
 
-	HorizontalBox {
+	key-scope := FocusScope {
+		width: 100%;
+		height: 100%;
+
+		capture-key-pressed(event) => {
+			if (event.modifiers.control) {
+				if (event.text == "-") {
+					AppLogic.adjust-response-font-size(-1);
+					return accept;
+				}
+				if (event.text == "+" || event.text == "=") {
+					AppLogic.adjust-response-font-size(1);
+					return accept;
+				}
+			}
+			reject
+		}
+
+		wheel-scope := TouchArea {
+			width: 100%;
+			height: 100%;
+			scroll-event(event) => {
+				if (event.modifiers.control) {
+					if (event.delta-y < 0) {
+						AppLogic.adjust-response-font-size(1);
+						return accept;
+					}
+					if (event.delta-y > 0) {
+						AppLogic.adjust-response-font-size(-1);
+						return accept;
+					}
+				}
+				reject
+			}
+
+			HorizontalBox {
 		// std-widgets HorizontalBox defaults to StyleMetrics.layout-padding (~16px) on all sides.
 		spacing: 0;
 		padding: 0px;
@@ -177,7 +435,7 @@ export component MainWindow inherits Window {
 							}
 						}
 					}
-					Button {
+					RectButton {
 						text: "+ Collection";
 						clicked => {
 							AppLogic.new-collection();
@@ -242,19 +500,19 @@ export component MainWindow inherits Window {
 					HorizontalBox {
 						padding: 0px;
 						spacing: 3px;
-						Button {
+						RectButton {
 							text: "New";
 							clicked => {
 								AppLogic.new-request();
 							}
 						}
-						Button {
+						RectButton {
 							text: "Dup";
 							clicked => {
 								AppLogic.duplicate-request();
 							}
 						}
-						Button {
+						RectButton {
 							text: "Del";
 							clicked => {
 								AppLogic.delete-request();
@@ -262,7 +520,7 @@ export component MainWindow inherits Window {
 						}
 					}
 
-					Button {
+					RectButton {
 						text: "Save all";
 						primary: true;
 						clicked => {
@@ -306,7 +564,7 @@ export component MainWindow inherits Window {
 					horizontal-stretch: 1;
 				}
 
-				Button {
+				RectButton {
 					text: AppLogic.loading ? "Cancel" : "Send";
 					primary: !AppLogic.loading;
 					clicked => {
@@ -378,10 +636,104 @@ export component MainWindow inherits Window {
 					min-width: 200px;
 					vertical-stretch: 1;
 
-					Text {
-						text: "Response";
-						font-size: 14px;
-						font-weight: 700;
+					HorizontalBox {
+						padding: 0px;
+						spacing: 6px;
+						Text {
+							text: "Response";
+							font-size: 14px;
+							font-weight: 700;
+							vertical-alignment: center;
+							horizontal-stretch: 1;
+						}
+						Rectangle {
+							width: 40px;
+							height: 28px;
+							vertical-stretch: 0;
+							RectButton {
+								text: "Aa";
+								min-btn-height: 28px;
+								min-btn-width: 28px;
+								pad-h: 6px;
+								pad-v: 4px;
+								width: 100%;
+								height: 100%;
+								clicked => {
+									response-font-settings-popup.show();
+								}
+							}
+							response-font-settings-popup := PopupWindow {
+								x: 0px;
+								y: parent.height + 4px;
+								width: 288px;
+								close-policy: close-on-click-outside;
+
+								Rectangle {
+									width: 100%;
+									height: 100%;
+									background: Palette.alternate-background;
+									border-width: 1px;
+									border-color: Palette.border;
+									border-radius: 8px;
+
+									VerticalBox {
+										padding: 12px;
+										spacing: 10px;
+										width: 100%;
+
+										Text {
+											text: "Response font";
+											font-size: 14px;
+											font-weight: 700;
+											color: Palette.foreground;
+										}
+										Text {
+											text: "Typeface";
+											font-size: 11px;
+											color: Palette.foreground;
+										}
+										ResponseFontPicker {
+											embed-list: true;
+											fonts: AppLogic.response-font-names;
+											current-index <=> AppLogic.response-font-index;
+											horizontal-stretch: 1;
+											min-width: 160px;
+											max-width: 264px;
+											width: 100%;
+											picked(idx) => {
+												AppLogic.response-font-selected(idx);
+											}
+										}
+										HorizontalBox {
+											spacing: 8px;
+											Text {
+												text: "Size";
+												font-size: 11px;
+												vertical-alignment: center;
+												color: Palette.foreground;
+											}
+											Slider {
+												minimum: 8;
+												maximum: 24;
+												step: 1;
+												horizontal-stretch: 1;
+												vertical-stretch: 0;
+												value <=> AppLogic.response-body-font-size;
+												changed => {
+													AppLogic.commit-response-font-size(AppLogic.response-body-font-size);
+												}
+											}
+										}
+										RectButton {
+											text: "Done";
+											clicked => {
+												response-font-settings-popup.close();
+											}
+										}
+									}
+								}
+							}
+						}
 					}
 
 					HorizontalBox {
@@ -398,51 +750,81 @@ export component MainWindow inherits Window {
 						}
 					}
 
-					Text {
-						text: "Response headers";
-						font-size: 11px;
-					}
-					ScrollView {
-						max-height: 120px;
-						vertical-stretch: 0;
-						Text {
-							width: 100%;
-							text: AppLogic.response-headers;
-							wrap: word-wrap;
-							font-family: "monospace";
-							font-size: 12px;
-						}
-					}
-
-					Text {
-						text: "JSONPath";
-						font-size: 11px;
-					}
-					CompactLineEdit {
-						font-family: "monospace";
-						font-size: 12px;
-						placeholder-text: "$.data.items[*].id";
-						text <=> AppLogic.response-jsonpath;
-						edited => {
-							AppLogic.response-jsonpath-changed();
-						}
-					}
-
-					Text {
-						text: "Response body";
-						font-size: 11px;
-					}
-					// TextEdit embeds ScrollView + TextInput so viewport height is correct (scrollbar appears for long bodies).
-					TextEdit {
-						read-only: true;
-						text <=> AppLogic.response-body;
-						font-family: "monospace";
-						font-size: 12px;
-						wrap: word-wrap;
+					VerticalBox {
 						vertical-stretch: 1;
-						min-height: 80px;
+						spacing: 4px;
+						padding-top: 0px;
+						padding-bottom: 0px;
+						padding-left: 0px;
+						padding-right: 0px;
+
+						VerticalBox {
+							height: response-headers-panel-height;
+							vertical-stretch: 0;
+							spacing: 4px;
+							padding: 0px;
+
+							Text {
+								text: "Response headers";
+								font-size: 11px;
+								vertical-stretch: 0;
+							}
+							// TextEdit (read-only) sizes the inner ScrollView viewport from TextInput layout; plain Text in ScrollView does not scroll reliably.
+							TextEdit {
+								read-only: true;
+								text: AppLogic.response-headers;
+								font-family: AppLogic.response-body-font-family;
+								font-size: AppLogic.response-body-font-size * 1px;
+								wrap: word-wrap;
+								vertical-stretch: 1;
+								min-height: 40px;
+							}
+						}
+
+						HorizontalSplitter {
+							panel-height <=> response-headers-panel-height;
+							min-panel-height: 72px;
+							max-panel-height: 10000px;
+						}
+
+						VerticalBox {
+							vertical-stretch: 1;
+							spacing: 4px;
+							padding: 0px;
+
+							Text {
+								text: "JSONPath";
+								font-size: 11px;
+							}
+							CompactLineEdit {
+								font-family: AppLogic.response-body-font-family;
+								font-size: AppLogic.response-body-font-size * 1px;
+								placeholder-text: "$.data.items[*].id";
+								text <=> AppLogic.response-jsonpath;
+								edited => {
+									AppLogic.response-jsonpath-changed();
+								}
+							}
+
+							Text {
+								text: "Response body";
+								font-size: 11px;
+							}
+							// TextEdit embeds ScrollView + TextInput so viewport height is correct (scrollbar appears for long bodies).
+							TextEdit {
+								read-only: true;
+								text <=> AppLogic.response-body;
+								font-family: AppLogic.response-body-font-family;
+								font-size: AppLogic.response-body-font-size * 1px;
+								wrap: word-wrap;
+								vertical-stretch: 1;
+								min-height: 80px;
+							}
+						}
 					}
 				}
+			}
+		}
 			}
 		}
 	}

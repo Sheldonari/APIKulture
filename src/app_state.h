@@ -32,6 +32,9 @@ public:
 	void commit_collection_name();
 	void commit_request_name();
 	void response_jsonpath_changed();
+	void apply_response_font_index(int index);
+	void adjust_response_font_size(int delta);
+	void commit_response_font_size(float size_px);
 
 	/// Call after MainWindow is created to load data into UI models.
 	void init_collections_ui();

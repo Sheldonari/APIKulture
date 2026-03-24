@@ -1,5 +1,6 @@
 #include "app_state.h"
 #include "http_client.h"
+#include "window_state.hpp"
 #include <jsoncons/json.hpp>
 #include <jsoncons_ext/jsonpath/jsonpath.hpp>
 #include <nlohmann/json.hpp>
@@ -356,6 +357,32 @@ void AppState::commit_collection_name() {
 void AppState::response_jsonpath_changed() {
 	commit_form_to_current_item();
 	refresh_response_display();
+}
+
+void AppState::apply_response_font_index(int index) {
+	if (index < 0 || index >= static_cast<int>(apikulture::window_state::k_response_font_choices.size())) {
+		return;
+	}
+	auto& g = ui_->global<AppLogic>();
+	const char* fam = apikulture::window_state::k_response_font_choices[static_cast<size_t>(index)];
+	g.set_response_body_font_family(slint::SharedString(fam));
+	apikulture::window_state::persist_response_body_font_family(fam);
+}
+
+void AppState::adjust_response_font_size(int delta) {
+	auto& g = ui_->global<AppLogic>();
+	const float cur = g.get_response_body_font_size();
+	const float next = std::clamp(cur + static_cast<float>(delta), 8.f, 24.f);
+	if (next == cur) return;
+	g.set_response_body_font_size(next);
+	apikulture::window_state::persist_response_body_font_size(next);
+}
+
+void AppState::commit_response_font_size(float size_px) {
+	const float v = std::clamp(size_px, 8.f, 24.f);
+	auto& g = ui_->global<AppLogic>();
+	g.set_response_body_font_size(v);
+	apikulture::window_state::persist_response_body_font_size(v);
 }
 
 void AppState::refresh_response_display() {
