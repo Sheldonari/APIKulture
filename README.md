@@ -50,6 +50,39 @@ Run:
 ./apikulture   # or apikulture.exe on Windows
 ```
 
+### Runtime: Slint shared library (`libslint_cpp.so` / `slint_cpp.dll`)
+
+APIkulture is normally **linked dynamically** against Slint. The system must then load **`libslint_cpp.so`** on Linux or **`slint_cpp.dll`** on Windows (plus any other Slint/runtime DLLs the SDK ships). If that library is missing from the loader search path, the app exits immediately with an error such as `error while loading shared libraries: libslint_cpp.so`.
+
+This applies when you use the **pre-built Slint C++ SDK** or a **default shared build** of Slint (including typical **FetchContent** builds). **Static** Slint builds embed the runtime instead; they are not covered here.
+
+#### Linux — Ubuntu
+
+Ubuntu’s default apt repositories do **not** ship `libslint_cpp` as a standalone package. Use one of these:
+
+1. **Official Slint SDK (tarball)** — Download `slint-cpp-*-Linux-x86_64.tar.gz` from [Slint releases](https://github.com/slint-ui/slint/releases), extract it, then either:
+	- **Per session:**  
+	  `export LD_LIBRARY_PATH="/path/to/slint-cpp-…/lib:$LD_LIBRARY_PATH"`  
+	  before starting `./apikulture`, or
+	- **System-wide:** copy the `.so` files from the archive’s `lib/` directory into `/usr/local/lib` (or another directory on the loader path) and run `sudo ldconfig`.
+
+2. **Same tree as CMake** — If you built with `SLINT_DIR` pointing at an extracted SDK, use that SDK’s `lib` directory in `LD_LIBRARY_PATH` when you run the binary from another folder.
+
+#### Linux — Arch
+
+Use the **AUR** so the libraries are installed where the dynamic linker expects them, for example:
+
+- **`slint-cpp-bin`** — pre-built Slint C++ binaries (faster install), or  
+- **`slint-cpp`** — builds Slint from source.
+
+Install with your AUR helper (e.g. `yay -S slint-cpp-bin`). Package names and file paths may change; check the PKGBUILD if linking still fails.
+
+#### Windows
+
+Install or unpack the **Slint C++ SDK** for Windows and ensure **`slint_cpp.dll`** and the other runtime DLLs from the SDK’s `lib` folder are **next to `apikulture.exe`**, or add that `lib` directory to **`PATH`**.
+
+This repo’s `CMakeLists.txt` runs a **post-build copy** of runtime DLLs into the executable directory on Windows; if you move only `apikulture.exe` elsewhere, copy those DLLs too.
+
 ### Theme (light / dark)
 
 The project defaults to Slint’s **`material`** style (`SLINT_STYLE` in CMake). Material/fluent widgets use Slint’s `Palette` and **`Palette.color-scheme` actually changes** light vs dark.
@@ -67,8 +100,9 @@ While the app is running, the theme **updates automatically** when you follow th
 
 ### Multiplatform notes
 
-- **Windows**: A console window is shown by default; to hide it, link with `/SUBSYSTEM:WINDOWS` (see Slint docs).
-- **Linux / macOS**: No extra steps.
+- **Windows**: A console window is shown by default; to hide it, link with `/SUBSYSTEM:WINDOWS` (see Slint docs). See **Runtime: Slint shared library** for DLL layout.
+- **Linux**: See **Runtime: Slint shared library** for `libslint_cpp.so` (Ubuntu / Arch instructions above).
+- **macOS**: Dynamic Slint builds need the SDK’s shared libraries on the loader path at runtime (install Slint to a prefix, set rpath, or follow [Slint’s C++ setup](https://docs.slint.dev/latest/docs/cpp/cmake/) for your layout).
 
 ## License
 

@@ -143,6 +143,18 @@ void merge_params(std::vector<nlohmann::json>& base, const std::vector<nlohmann:
 	}
 }
 
+bool schema_includes_string_type(const nlohmann::json& sch) {
+	if (!sch.is_object() || !sch.contains("type")) return false;
+	const auto& t = sch["type"];
+	if (t.is_string()) return t.get<std::string>() == "string";
+	if (t.is_array()) {
+		for (const auto& el : t) {
+			if (el.is_string() && el.get<std::string>() == "string") return true;
+		}
+	}
+	return false;
+}
+
 std::string param_example_value(const nlohmann::json& param) {
 	if (param.contains("example")) {
 		if (param["example"].is_string()) return param["example"].get<std::string>();
@@ -163,7 +175,7 @@ std::string param_example_value(const nlohmann::json& param) {
 			if (sch["default"].is_string()) return sch["default"].get<std::string>();
 			return sch["default"].dump();
 		}
-		if (sch.value("type", "") == "string" && sch.contains("enum") && sch["enum"].is_array()
+		if (schema_includes_string_type(sch) && sch.contains("enum") && sch["enum"].is_array()
 				&& !sch["enum"].empty() && sch["enum"][0].is_string()) {
 			return sch["enum"][0].get<std::string>();
 		}
