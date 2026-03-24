@@ -43,6 +43,11 @@ public:
 	void commit_environment_name();
 	void commit_environment_variables();
 
+	void query_param_key_edited(int index, slint::SharedString text);
+	void query_param_value_edited(int index, slint::SharedString text);
+	void add_query_param();
+	void remove_query_param(int index);
+
 	/// Call after MainWindow is created to load data into UI models.
 	void init_collections_ui();
 
@@ -62,6 +67,7 @@ private:
 	void apply_environment_fields_to_ui();
 	void push_name_edits_to_ui();
 	void push_selection_to_ui();
+	void refresh_query_param_models();
 	std::shared_ptr<slint::VectorModel<slint::SharedString>> make_name_model(
 			const std::vector<std::string>& names);
 
@@ -86,6 +92,8 @@ private:
 	apikulture::Workspace workspace_;
 	int collection_index_{0};
 	int request_index_{0};
+	std::shared_ptr<slint::VectorModel<slint::SharedString>> query_param_keys_model_;
+	std::shared_ptr<slint::VectorModel<slint::SharedString>> query_param_values_model_;
 };
 
 #endif  // APIKULTURE_APP_STATE_H

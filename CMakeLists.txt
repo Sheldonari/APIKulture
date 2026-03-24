@@ -65,6 +65,7 @@ add_executable(apikulture
 	src/http_client.cpp
 	src/collections_io.cpp
 	src/environment.cpp
+	src/query_string.cpp
 	src/window_state.cpp
 )
 

@@ -14,6 +14,8 @@ struct RequestItem {
 	std::string name{"New request"};
 	std::string method{"GET"};
 	std::string url;
+	/// GET-style query parameters (applied to the URL on send; supports {{var}} in keys/values).
+	std::vector<std::pair<std::string, std::string>> query_params;
 	std::string headers;
 	std::string body;
 	/// Optional JSONPath applied to the response body when displaying (e.g. "$.data.items[*]").

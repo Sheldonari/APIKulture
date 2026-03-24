@@ -290,6 +290,10 @@ export global AppLogic {
 	callback delete-environment();
 	callback commit-environment-name();
 	callback commit-environment-variables();
+	callback query-param-key-edited(int, string);
+	callback query-param-value-edited(int, string);
+	callback add-query-param();
+	callback remove-query-param(int);
 	callback commit-collection-name();
 	callback commit-request-name();
 	callback response-jsonpath-changed();
@@ -310,6 +314,9 @@ export global AppLogic {
 	in-out property <string> environment-base-url: "";
 	in-out property <string> environment-variables: "";
 	in property <[string]> environment-names: [];
+
+	in property <[string]> query-param-keys: [];
+	in property <[string]> query-param-values: [];
 
 	in-out property <string> method: "GET";
 	in-out property <string> url: "";
@@ -341,6 +348,8 @@ export component MainWindow inherits Window {
 	in-out property <length> collection-panel-width: 240px;
 	in-out property <length> request-panel-width: 420px;
 	in-out property <length> sidebar-collections-height: 220px;
+	/// Height of the query-parameters block (label + list + “+ param”) above the horizontal splitter.
+	in-out property <length> request-query-panel-height: 400px;
 	/// Height of the response headers block (label + scroll area) above the horizontal splitter.
 	in-out property <length> response-headers-panel-height: 120px;
 
@@ -687,29 +696,112 @@ export component MainWindow inherits Window {
 						font-weight: 700;
 					}
 
-					Text {
-						text: "Headers (one per line: Key: value)";
-						font-size: 11px;
-					}
-					ScrollView {
-						max-height: 120px;
+					VerticalBox {
+						height: request-query-panel-height;
 						vertical-stretch: 0;
-						TextEdit {
-							text <=> AppLogic.request-headers;
-							font-family: "monospace";
+						spacing: 0px;
+						padding: 0px;
+
+						Text {
+							text: "Query parameters";
+							font-size: 11px;
+						}
+						ScrollView {
+							vertical-stretch: 1;
+							horizontal-stretch: 1;
+							min-height: 32px;
+							VerticalBox {
+								width: 100%;
+								horizontal-stretch: 1;
+								spacing: 0px;
+								padding: 0px;
+								for key[idx] in AppLogic.query-param-keys: HorizontalBox {
+									width: 100%;
+									spacing: 0px;
+									padding: 0px;
+									alignment: stretch;
+									CompactLineEdit {
+										font-family: AppLogic.response-body-font-family;
+										font-size: AppLogic.response-body-font-size * 1px;
+										placeholder-text: "name";
+										text: key;
+										horizontal-stretch: 1;
+										edited => {
+											AppLogic.query-param-key-edited(idx, self.text);
+										}
+										accepted => {
+											AppLogic.query-param-key-edited(idx, self.text);
+										}
+									}
+									CompactLineEdit {
+										font-family: AppLogic.response-body-font-family;
+										font-size: AppLogic.response-body-font-size * 1px;
+										placeholder-text: "value";
+										text: AppLogic.query-param-values[idx];
+										horizontal-stretch: 1;
+										edited => {
+											AppLogic.query-param-value-edited(idx, self.text);
+										}
+										accepted => {
+											AppLogic.query-param-value-edited(idx, self.text);
+										}
+									}
+									RectButton {
+										text: "×";
+										min-btn-height: 28px;
+										min-btn-width: 28px;
+										pad-h: 4px;
+										pad-v: 2px;
+										clicked => {
+											AppLogic.remove-query-param(idx);
+										}
+									}
+								}
+							}
+						}
+						RectButton {
+							text: "+ param";
+							clicked => {
+								AppLogic.add-query-param();
+							}
 						}
 					}
 
-					Text {
-						text: "Body";
-						font-size: 11px;
+					HorizontalSplitter {
+						panel-height <=> request-query-panel-height;
+						min-panel-height: 80px;
+						max-panel-height: 10000px;
 					}
-					ScrollView {
+
+					VerticalBox {
 						vertical-stretch: 1;
-						min-height: 80px;
-						TextEdit {
-							text <=> AppLogic.request-body;
-							font-family: "monospace";
+						spacing: 4px;
+						padding: 0px;
+
+						Text {
+							text: "Headers (one per line: Key: value)";
+							font-size: 11px;
+						}
+						ScrollView {
+							max-height: 120px;
+							vertical-stretch: 0;
+							TextEdit {
+								text <=> AppLogic.request-headers;
+								font-family: "monospace";
+							}
+						}
+
+						Text {
+							text: "Body";
+							font-size: 11px;
+						}
+						ScrollView {
+							vertical-stretch: 1;
+							min-height: 80px;
+							TextEdit {
+								text <=> AppLogic.request-body;
+								font-family: "monospace";
+							}
 						}
 					}
 				}

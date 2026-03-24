@@ -1,6 +1,7 @@
 #include "app_state.h"
 #include "environment.hpp"
 #include "http_client.h"
+#include "query_string.hpp"
 #include "window_state.hpp"
 #include <jsoncons/json.hpp>
 #include <jsoncons_ext/jsonpath/jsonpath.hpp>
@@ -272,6 +273,7 @@ void AppState::apply_form_from_current_item() {
 	g.set_request_headers(slint::SharedString(item.headers));
 	g.set_request_body(slint::SharedString(item.body));
 	g.set_response_jsonpath(slint::SharedString(item.jsonpath));
+	refresh_query_param_models();
 
 	g.set_response_status(slint::SharedString(item.last_response_status));
 	g.set_response_headers(slint::SharedString(item.last_response_headers));
@@ -494,6 +496,9 @@ void AppState::send_request() {
 
 	std::string url_after_vars = apikulture::substitute_variables(raw_url, var_map);
 	pending_url_ = apikulture::resolve_url_with_base(base_subst, url_after_vars);
+	if (apikulture::RequestItem* item = mutable_current_request_item()) {
+		pending_url_ = apikulture::append_query_params_to_url(pending_url_, item->query_params, var_map);
+	}
 	pending_headers_ = apikulture::substitute_variables(raw_headers, var_map);
 	pending_body_ = apikulture::substitute_variables(raw_body, var_map);
 
@@ -670,4 +675,84 @@ void AppState::commit_environment_name() {
 
 void AppState::commit_environment_variables() {
 	commit_environment_fields_to_active();
+}
+
+void AppState::refresh_query_param_models() {
+	std::vector<std::string> keys;
+	std::vector<std::string> vals;
+	if (apikulture::RequestItem* it = mutable_current_request_item()) {
+		/// Match stored rows to the visible editor: one blank row is always persisted so "+ param"
+		/// adds a real second row (previously the list showed a synthetic row while `query_params` stayed empty).
+		if (it->query_params.empty()) {
+			it->query_params.push_back({"", ""});
+		}
+		for (const auto& p : it->query_params) {
+			keys.push_back(p.first);
+			vals.push_back(p.second);
+		}
+	}
+	if (keys.empty()) {
+		keys.push_back("");
+		vals.push_back("");
+	}
+	query_param_keys_model_ = make_name_model(keys);
+	query_param_values_model_ = make_name_model(vals);
+	auto& g = ui_->global<AppLogic>();
+	g.set_query_param_keys(query_param_keys_model_);
+	g.set_query_param_values(query_param_values_model_);
+}
+
+void AppState::query_param_key_edited(int index, slint::SharedString text) {
+	auto* item = mutable_current_request_item();
+	if (!item || index < 0) return;
+	while (static_cast<size_t>(index) >= item->query_params.size()) {
+		item->query_params.push_back({"", ""});
+	}
+	item->query_params[static_cast<size_t>(index)].first = to_std_string(text);
+	if (query_param_keys_model_) {
+		const int rc = query_param_keys_model_->row_count();
+		if (index < rc) {
+			query_param_keys_model_->set_row_data(index, text);
+		}
+	}
+}
+
+void AppState::query_param_value_edited(int index, slint::SharedString text) {
+	auto* item = mutable_current_request_item();
+	if (!item || index < 0) return;
+	while (static_cast<size_t>(index) >= item->query_params.size()) {
+		item->query_params.push_back({"", ""});
+	}
+	item->query_params[static_cast<size_t>(index)].second = to_std_string(text);
+	if (query_param_values_model_) {
+		const int rc = query_param_values_model_->row_count();
+		if (index < rc) {
+			query_param_values_model_->set_row_data(index, text);
+		}
+	}
+}
+
+void AppState::add_query_param() {
+	auto* item = mutable_current_request_item();
+	if (!item) return;
+	if (item->query_params.empty()) {
+		item->query_params.push_back({"", ""});
+	}
+	item->query_params.push_back({"", ""});
+	refresh_query_param_models();
+}
+
+void AppState::remove_query_param(int index) {
+	auto* item = mutable_current_request_item();
+	if (!item || index < 0) return;
+	if (item->query_params.size() <= 1) {
+		item->query_params[0] = {"", ""};
+		refresh_query_param_models();
+		return;
+	}
+	if (static_cast<size_t>(index) < item->query_params.size()) {
+		item->query_params.erase(item->query_params.begin() + index);
+	}
+	if (item->query_params.empty()) item->query_params.push_back({"", ""});
+	refresh_query_param_models();
 }

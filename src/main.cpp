@@ -113,6 +113,7 @@ int main(int argc, char** argv) {
 		ui->set_collection_panel_width(ws.collection_panel_width_px);
 		ui->set_request_panel_width(ws.request_panel_width_px);
 		ui->set_sidebar_collections_height(ws.sidebar_collections_height_px);
+		ui->set_request_query_panel_height(ws.request_query_panel_height_px);
 		ui->set_response_headers_panel_height(ws.response_headers_panel_height_px);
 		if (ws.maximized) {
 			ui->window().set_maximized(true);
@@ -138,6 +139,14 @@ int main(int argc, char** argv) {
 	logic.on_delete_environment([&state]() { state.delete_environment(); });
 	logic.on_commit_environment_name([&state]() { state.commit_environment_name(); });
 	logic.on_commit_environment_variables([&state]() { state.commit_environment_variables(); });
+	logic.on_query_param_key_edited([&state](int idx, slint::SharedString text) {
+		state.query_param_key_edited(idx, std::move(text));
+	});
+	logic.on_query_param_value_edited([&state](int idx, slint::SharedString text) {
+		state.query_param_value_edited(idx, std::move(text));
+	});
+	logic.on_add_query_param([&state]() { state.add_query_param(); });
+	logic.on_remove_query_param([&state](int idx) { state.remove_query_param(idx); });
 	logic.on_commit_collection_name([&state]() { state.commit_collection_name(); });
 	logic.on_commit_request_name([&state]() { state.commit_request_name(); });
 	logic.on_response_jsonpath_changed([&state]() { state.response_jsonpath_changed(); });
@@ -155,6 +164,7 @@ int main(int argc, char** argv) {
 		snapshot.collection_panel_width_px = ui->get_collection_panel_width();
 		snapshot.request_panel_width_px = ui->get_request_panel_width();
 		snapshot.sidebar_collections_height_px = ui->get_sidebar_collections_height();
+		snapshot.request_query_panel_height_px = ui->get_request_query_panel_height();
 		snapshot.response_headers_panel_height_px = ui->get_response_headers_panel_height();
 		apikulture::window_state::save_window_session(snapshot);
 	}
