@@ -285,6 +285,11 @@ export global AppLogic {
 	callback delete-request();
 	callback duplicate-request();
 	callback save-collections();
+	callback environment-changed(string);
+	callback new-environment();
+	callback delete-environment();
+	callback commit-environment-name();
+	callback commit-environment-variables();
 	callback commit-collection-name();
 	callback commit-request-name();
 	callback response-jsonpath-changed();
@@ -299,6 +304,12 @@ export global AppLogic {
 	in property <[string]> request-names: [];
 	in property <int> selected-collection-index: 0;
 	in property <int> selected-request-index: 0;
+
+	in-out property <string> active-environment-name: "Default";
+	in-out property <string> environment-name-edit: "";
+	in-out property <string> environment-base-url: "";
+	in-out property <string> environment-variables: "";
+	in property <[string]> environment-names: [];
 
 	in-out property <string> method: "GET";
 	in-out property <string> url: "";
@@ -527,6 +538,86 @@ export component MainWindow inherits Window {
 							AppLogic.save-collections();
 						}
 					}
+
+					Text {
+						text: "Environment";
+						font-size: 13px;
+						font-weight: 700;
+						color: Palette.foreground;
+					}
+					ComboBox {
+						model: AppLogic.environment-names;
+						current-value <=> AppLogic.active-environment-name;
+						selected(name) => {
+							AppLogic.environment-changed(name);
+						}
+						min-width: 120px;
+						horizontal-stretch: 1;
+					}
+					CompactLineEdit {
+						placeholder-text: "Rename environment";
+						text <=> AppLogic.environment-name-edit;
+						font-size: 13px;
+						accepted => {
+							AppLogic.commit-environment-name();
+						}
+					}
+					Text {
+						text: "Base URL";
+						font-size: 11px;
+						color: Palette.foreground;
+					}
+					CompactLineEdit {
+						placeholder-text: "https://api.dev.example.com";
+						text <=> AppLogic.environment-base-url;
+						font-size: 12px;
+						horizontal-stretch: 1;
+						edited => {
+							AppLogic.commit-environment-variables();
+						}
+					}
+					Text {
+						text: "Request URL can be a path (/v1/users); full URLs skip the base.";
+						font-size: 10px;
+						color: Palette.foreground;
+						wrap: word-wrap;
+					}
+					HorizontalBox {
+						padding: 0px;
+						spacing: 3px;
+						RectButton {
+							text: "+ Env";
+							clicked => {
+								AppLogic.new-environment();
+							}
+						}
+						RectButton {
+							text: "Del env";
+							clicked => {
+								AppLogic.delete-environment();
+							}
+						}
+					}
+					Text {
+						text: "Variables (KEY=value; use {{KEY}} in URL/headers/body)";
+						font-size: 11px;
+						color: Palette.foreground;
+						wrap: word-wrap;
+					}
+					ScrollView {
+						min-height: 72px;
+						max-height: 160px;
+						vertical-stretch: 0;
+						TextEdit {
+							text <=> AppLogic.environment-variables;
+							font-family: "monospace";
+							font-size: 12px;
+							wrap: word-wrap;
+							edited => {
+								AppLogic.commit-environment-variables();
+							}
+						}
+					}
 				}
 			}
 		}
@@ -559,7 +650,7 @@ export component MainWindow inherits Window {
 				}
 
 				CompactLineEdit {
-					placeholder-text: "https://api.example.com/endpoint";
+					placeholder-text: "/v1/resource or https://host/path";
 					text <=> AppLogic.url;
 					horizontal-stretch: 1;
 				}

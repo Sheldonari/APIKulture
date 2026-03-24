@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <map>
 #include "MainWindow.h"
 #include "collections_io.hpp"
 
@@ -36,6 +37,12 @@ public:
 	void adjust_response_font_size(int delta);
 	void commit_response_font_size(float size_px);
 
+	void environment_changed(const std::string& selected_name);
+	void new_environment();
+	void delete_environment();
+	void commit_environment_name();
+	void commit_environment_variables();
+
 	/// Call after MainWindow is created to load data into UI models.
 	void init_collections_ui();
 
@@ -47,8 +54,12 @@ private:
 	void push_response_body(const std::string& text);
 	/// Non-null when collections/request indices refer to a valid item.
 	apikulture::RequestItem* mutable_current_request_item();
+	apikulture::Environment* mutable_active_environment();
 	void refresh_collection_names_model();
 	void refresh_request_names_model();
+	void refresh_environment_names_model();
+	void commit_environment_fields_to_active();
+	void apply_environment_fields_to_ui();
 	void push_name_edits_to_ui();
 	void push_selection_to_ui();
 	std::shared_ptr<slint::VectorModel<slint::SharedString>> make_name_model(
@@ -72,7 +83,7 @@ private:
 	/// `Content-Type` value for the last successful response (for highlighter when body is JSONPath-filtered).
 	std::optional<std::string> last_success_content_type_;
 
-	std::vector<apikulture::Collection> collections_;
+	apikulture::Workspace workspace_;
 	int collection_index_{0};
 	int request_index_{0};
 };

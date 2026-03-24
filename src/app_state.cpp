@@ -1,4 +1,5 @@
 #include "app_state.h"
+#include "environment.hpp"
 #include "http_client.h"
 #include "window_state.hpp"
 #include <jsoncons/json.hpp>
@@ -94,12 +95,19 @@ std::string content_type_value_from_headers(const std::vector<std::pair<std::str
 }  // namespace
 
 apikulture::RequestItem* AppState::mutable_current_request_item() {
-	if (collections_.empty()) return nullptr;
-	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return nullptr;
-	auto& col = collections_[static_cast<size_t>(collection_index_)];
+	if (workspace_.collections.empty()) return nullptr;
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(workspace_.collections.size())) return nullptr;
+	auto& col = workspace_.collections[static_cast<size_t>(collection_index_)];
 	if (col.items.empty()) return nullptr;
 	if (request_index_ < 0 || request_index_ >= static_cast<int>(col.items.size())) return nullptr;
 	return &col.items[static_cast<size_t>(request_index_)];
+}
+
+apikulture::Environment* AppState::mutable_active_environment() {
+	if (workspace_.environments.empty()) return nullptr;
+	int i = workspace_.active_environment_index;
+	if (i < 0 || i >= static_cast<int>(workspace_.environments.size())) return nullptr;
+	return &workspace_.environments[static_cast<size_t>(i)];
 }
 
 void AppState::push_response_body(const std::string& text) {
@@ -108,12 +116,22 @@ void AppState::push_response_body(const std::string& text) {
 }
 
 AppState::AppState(const MainWindowHandle& ui) : ui_(ui) {
-	collections_ = apikulture::collections_io::load_or_default();
-	if (collection_index_ >= static_cast<int>(collections_.size())) {
+	workspace_ = apikulture::collections_io::load_workspace_or_default();
+	if (workspace_.environments.empty()) {
+		apikulture::Environment def;
+		def.name = "Default";
+		workspace_.environments.push_back(std::move(def));
+		workspace_.active_environment_index = 0;
+	}
+	if (workspace_.active_environment_index < 0
+			|| workspace_.active_environment_index >= static_cast<int>(workspace_.environments.size())) {
+		workspace_.active_environment_index = 0;
+	}
+	if (collection_index_ >= static_cast<int>(workspace_.collections.size())) {
 		collection_index_ = 0;
 	}
-	if (!collections_.empty()) {
-		auto& col = collections_[collection_index_];
+	if (!workspace_.collections.empty()) {
+		auto& col = workspace_.collections[collection_index_];
 		if (request_index_ >= static_cast<int>(col.items.size())) {
 			request_index_ = 0;
 		}
@@ -122,7 +140,7 @@ AppState::AppState(const MainWindowHandle& ui) : ui_(ui) {
 
 AppState::~AppState() {
 	commit_form_to_current_item();
-	apikulture::collections_io::save(collections_);
+	apikulture::collections_io::save_workspace(workspace_);
 	cancel_request();
 	{
 		std::lock_guard<std::mutex> lock(mutex_);
@@ -143,8 +161,8 @@ std::shared_ptr<slint::VectorModel<slint::SharedString>> AppState::make_name_mod
 
 void AppState::refresh_collection_names_model() {
 	std::vector<std::string> names;
-	names.reserve(collections_.size());
-	for (const auto& c : collections_) {
+	names.reserve(workspace_.collections.size());
+	for (const auto& c : workspace_.collections) {
 		names.push_back(c.name);
 	}
 	auto& g = ui_->global<AppLogic>();
@@ -153,8 +171,8 @@ void AppState::refresh_collection_names_model() {
 
 void AppState::refresh_request_names_model() {
 	std::vector<std::string> names;
-	if (collection_index_ >= 0 && collection_index_ < static_cast<int>(collections_.size())) {
-		for (const auto& r : collections_[collection_index_].items) {
+	if (collection_index_ >= 0 && collection_index_ < static_cast<int>(workspace_.collections.size())) {
+		for (const auto& r : workspace_.collections[collection_index_].items) {
 			names.push_back(r.name);
 		}
 	}
@@ -162,16 +180,50 @@ void AppState::refresh_request_names_model() {
 	g.set_request_names(make_name_model(names));
 }
 
+void AppState::refresh_environment_names_model() {
+	std::vector<std::string> names;
+	names.reserve(workspace_.environments.size());
+	for (const auto& e : workspace_.environments) {
+		names.push_back(e.name);
+	}
+	auto& g = ui_->global<AppLogic>();
+	g.set_environment_names(make_name_model(names));
+}
+
+void AppState::commit_environment_fields_to_active() {
+	if (apikulture::Environment* env = mutable_active_environment()) {
+		auto& g = ui_->global<AppLogic>();
+		env->base_url = to_std_string(g.get_environment_base_url());
+		trim_in_place(env->base_url);
+		env->variables = apikulture::parse_environment_lines(to_std_string(g.get_environment_variables()));
+	}
+}
+
+void AppState::apply_environment_fields_to_ui() {
+	auto& g = ui_->global<AppLogic>();
+	if (apikulture::Environment* env = mutable_active_environment()) {
+		g.set_environment_base_url(slint::SharedString(env->base_url));
+		g.set_environment_variables(slint::SharedString(apikulture::format_environment_lines(env->variables)));
+		g.set_environment_name_edit(slint::SharedString(env->name));
+		g.set_active_environment_name(slint::SharedString(env->name));
+	} else {
+		g.set_environment_base_url(slint::SharedString(""));
+		g.set_environment_variables(slint::SharedString(""));
+		g.set_environment_name_edit(slint::SharedString(""));
+		g.set_active_environment_name(slint::SharedString(""));
+	}
+}
+
 void AppState::push_name_edits_to_ui() {
 	auto& g = ui_->global<AppLogic>();
-	if (collections_.empty()) {
+	if (workspace_.collections.empty()) {
 		g.set_collection_name_edit(slint::SharedString(""));
 		g.set_request_name_edit(slint::SharedString(""));
 		return;
 	}
-	if (collection_index_ >= 0 && collection_index_ < static_cast<int>(collections_.size())) {
-		g.set_collection_name_edit(slint::SharedString(collections_[static_cast<size_t>(collection_index_)].name));
-		const auto& col = collections_[static_cast<size_t>(collection_index_)];
+	if (collection_index_ >= 0 && collection_index_ < static_cast<int>(workspace_.collections.size())) {
+		g.set_collection_name_edit(slint::SharedString(workspace_.collections[static_cast<size_t>(collection_index_)].name));
+		const auto& col = workspace_.collections[static_cast<size_t>(collection_index_)];
 		if (!col.items.empty() && request_index_ >= 0
 				&& request_index_ < static_cast<int>(col.items.size())) {
 			g.set_request_name_edit(slint::SharedString(col.items[static_cast<size_t>(request_index_)].name));
@@ -189,9 +241,10 @@ void AppState::push_selection_to_ui() {
 }
 
 void AppState::commit_form_to_current_item() {
-	if (collections_.empty()) return;
-	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return;
-	auto& col = collections_[collection_index_];
+	commit_environment_fields_to_active();
+	if (workspace_.collections.empty()) return;
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(workspace_.collections.size())) return;
+	auto& col = workspace_.collections[collection_index_];
 	if (col.items.empty()) return;
 	if (request_index_ < 0 || request_index_ >= static_cast<int>(col.items.size())) return;
 
@@ -206,9 +259,9 @@ void AppState::commit_form_to_current_item() {
 }
 
 void AppState::apply_form_from_current_item() {
-	if (collections_.empty()) return;
-	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return;
-	auto& col = collections_[collection_index_];
+	if (workspace_.collections.empty()) return;
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(workspace_.collections.size())) return;
+	auto& col = workspace_.collections[collection_index_];
 	if (col.items.empty()) return;
 	if (request_index_ < 0 || request_index_ >= static_cast<int>(col.items.size())) return;
 
@@ -242,17 +295,19 @@ void AppState::apply_form_from_current_item() {
 void AppState::init_collections_ui() {
 	refresh_collection_names_model();
 	refresh_request_names_model();
+	refresh_environment_names_model();
 	push_selection_to_ui();
+	apply_environment_fields_to_ui();
 	apply_form_from_current_item();
 }
 
 void AppState::select_collection(int index) {
-	if (index < 0 || index >= static_cast<int>(collections_.size())) return;
+	if (index < 0 || index >= static_cast<int>(workspace_.collections.size())) return;
 	commit_form_to_current_item();
 	collection_index_ = index;
 	request_index_ = 0;
-	if (!collections_[static_cast<size_t>(collection_index_)].items.empty()) {
-		if (request_index_ >= static_cast<int>(collections_[static_cast<size_t>(collection_index_)].items.size())) {
+	if (!workspace_.collections[static_cast<size_t>(collection_index_)].items.empty()) {
+		if (request_index_ >= static_cast<int>(workspace_.collections[static_cast<size_t>(collection_index_)].items.size())) {
 			request_index_ = 0;
 		}
 	}
@@ -262,8 +317,8 @@ void AppState::select_collection(int index) {
 }
 
 void AppState::select_request(int index) {
-	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return;
-	auto& col = collections_[static_cast<size_t>(collection_index_)];
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(workspace_.collections.size())) return;
+	auto& col = workspace_.collections[static_cast<size_t>(collection_index_)];
 	if (index < 0 || index >= static_cast<int>(col.items.size())) return;
 	commit_form_to_current_item();
 	request_index_ = index;
@@ -274,12 +329,12 @@ void AppState::select_request(int index) {
 void AppState::new_collection() {
 	commit_form_to_current_item();
 	apikulture::Collection c;
-	c.name = "Collection " + std::to_string(collections_.size() + 1);
+	c.name = "Collection " + std::to_string(workspace_.collections.size() + 1);
 	apikulture::RequestItem r;
 	r.name = "Request 1";
 	c.items.push_back(std::move(r));
-	collections_.push_back(std::move(c));
-	collection_index_ = static_cast<int>(collections_.size()) - 1;
+	workspace_.collections.push_back(std::move(c));
+	collection_index_ = static_cast<int>(workspace_.collections.size()) - 1;
 	request_index_ = 0;
 	refresh_collection_names_model();
 	refresh_request_names_model();
@@ -288,9 +343,9 @@ void AppState::new_collection() {
 }
 
 void AppState::new_request() {
-	if (collections_.empty()) return;
+	if (workspace_.collections.empty()) return;
 	commit_form_to_current_item();
-	auto& col = collections_[static_cast<size_t>(collection_index_)];
+	auto& col = workspace_.collections[static_cast<size_t>(collection_index_)];
 	apikulture::RequestItem r;
 	r.name = std::string("Request ") + std::to_string(col.items.size() + 1);
 	col.items.push_back(std::move(r));
@@ -301,9 +356,9 @@ void AppState::new_request() {
 }
 
 void AppState::delete_request() {
-	if (collections_.empty()) return;
-	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return;
-	auto& col = collections_[static_cast<size_t>(collection_index_)];
+	if (workspace_.collections.empty()) return;
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(workspace_.collections.size())) return;
+	auto& col = workspace_.collections[static_cast<size_t>(collection_index_)];
 	if (col.items.empty()) return;
 	if (col.items.size() <= 1) {
 		col.items[0] = apikulture::RequestItem{};
@@ -321,9 +376,9 @@ void AppState::delete_request() {
 }
 
 void AppState::duplicate_request() {
-	if (collections_.empty()) return;
+	if (workspace_.collections.empty()) return;
 	commit_form_to_current_item();
-	auto& col = collections_[static_cast<size_t>(collection_index_)];
+	auto& col = workspace_.collections[static_cast<size_t>(collection_index_)];
 	if (request_index_ < 0 || request_index_ >= static_cast<int>(col.items.size())) return;
 	apikulture::RequestItem copy = col.items[static_cast<size_t>(request_index_)];
 	copy.name = copy.name + " copy";
@@ -336,12 +391,12 @@ void AppState::duplicate_request() {
 
 void AppState::save_collections() {
 	commit_form_to_current_item();
-	(void)apikulture::collections_io::save(collections_);
+	(void)apikulture::collections_io::save_workspace(workspace_);
 }
 
 void AppState::commit_collection_name() {
-	if (collections_.empty()) return;
-	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return;
+	if (workspace_.collections.empty()) return;
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(workspace_.collections.size())) return;
 	auto& g = ui_->global<AppLogic>();
 	std::string name = to_std_string(g.get_collection_name_edit());
 	trim_in_place(name);
@@ -349,7 +404,7 @@ void AppState::commit_collection_name() {
 		push_name_edits_to_ui();
 		return;
 	}
-	collections_[static_cast<size_t>(collection_index_)].name = std::move(name);
+	workspace_.collections[static_cast<size_t>(collection_index_)].name = std::move(name);
 	refresh_collection_names_model();
 	push_selection_to_ui();
 }
@@ -397,9 +452,9 @@ void AppState::refresh_response_display() {
 }
 
 void AppState::commit_request_name() {
-	if (collections_.empty()) return;
-	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(collections_.size())) return;
-	auto& col = collections_[static_cast<size_t>(collection_index_)];
+	if (workspace_.collections.empty()) return;
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(workspace_.collections.size())) return;
+	auto& col = workspace_.collections[static_cast<size_t>(collection_index_)];
 	if (col.items.empty()) return;
 	if (request_index_ < 0 || request_index_ >= static_cast<int>(col.items.size())) return;
 	auto& g = ui_->global<AppLogic>();
@@ -420,16 +475,43 @@ void AppState::send_request() {
 
 	auto& g = ui_->global<AppLogic>();
 	pending_method_ = to_std_string(g.get_method());
-	pending_url_ = to_std_string(g.get_url());
-	pending_headers_ = to_std_string(g.get_request_headers());
-	pending_body_ = to_std_string(g.get_request_body());
+	const std::string raw_url = to_std_string(g.get_url());
+	const std::string raw_headers = to_std_string(g.get_request_headers());
+	const std::string raw_body = to_std_string(g.get_request_body());
+
+	std::map<std::string, std::string> var_map;
+	std::string base_subst;
+	if (apikulture::Environment* env = mutable_active_environment()) {
+		auto local = apikulture::collections_io::load_local_overrides();
+		var_map = apikulture::effective_variable_map(*env, local);
+		std::string base_raw = apikulture::effective_base_url_field(*env, local);
+		if (base_raw.empty()) {
+			if (auto it = var_map.find("base_url"); it != var_map.end()) base_raw = it->second;
+		}
+		base_subst = apikulture::substitute_variables(base_raw, var_map);
+		if (!base_subst.empty()) var_map["base_url"] = base_subst;
+	}
+
+	std::string url_after_vars = apikulture::substitute_variables(raw_url, var_map);
+	pending_url_ = apikulture::resolve_url_with_base(base_subst, url_after_vars);
+	pending_headers_ = apikulture::substitute_variables(raw_headers, var_map);
+	pending_body_ = apikulture::substitute_variables(raw_body, var_map);
 
 	if (pending_url_.empty()) {
 		last_success_response_body_ = std::nullopt;
 		last_success_content_type_ = std::nullopt;
 		g.set_response_status(slint::SharedString(""));
 		g.set_response_headers(slint::SharedString(""));
-		push_response_body("Enter a URL");
+		push_response_body("Enter a URL or path");
+		return;
+	}
+	if (!apikulture::is_absolute_http_url(pending_url_)) {
+		last_success_response_body_ = std::nullopt;
+		last_success_content_type_ = std::nullopt;
+		g.set_response_status(slint::SharedString(""));
+		g.set_response_headers(slint::SharedString(""));
+		push_response_body(
+				"Relative URL needs a Base URL for this environment (sidebar), or use an absolute https://… URL.");
 		return;
 	}
 
@@ -494,7 +576,7 @@ void AppState::worker_run() {
 					item->last_response_body_raw = res.body;
 					item->last_response_content_type = response_content_type;
 				}
-				(void)apikulture::collections_io::save(collections_);
+						(void)apikulture::collections_io::save_workspace(workspace_);
 			}
 			if (!res.error.empty()) {
 				last_success_response_body_ = std::nullopt;
@@ -515,4 +597,77 @@ void AppState::worker_run() {
 
 		worker_busy_ = false;
 	}
+}
+
+void AppState::environment_changed(const std::string& selected_name) {
+	commit_environment_fields_to_active();
+	for (size_t i = 0; i < workspace_.environments.size(); ++i) {
+		if (workspace_.environments[i].name == selected_name) {
+			workspace_.active_environment_index = static_cast<int>(i);
+			apply_environment_fields_to_ui();
+			(void)apikulture::collections_io::save_workspace(workspace_);
+			return;
+		}
+	}
+}
+
+void AppState::new_environment() {
+	commit_environment_fields_to_active();
+	apikulture::Environment e;
+	e.name = "Environment " + std::to_string(workspace_.environments.size() + 1);
+	for (;;) {
+		bool clash = false;
+		for (const auto& x : workspace_.environments) {
+			if (x.name == e.name) {
+				clash = true;
+				break;
+			}
+		}
+		if (!clash) break;
+		e.name += "_";
+	}
+	workspace_.environments.push_back(std::move(e));
+	workspace_.active_environment_index = static_cast<int>(workspace_.environments.size()) - 1;
+	refresh_environment_names_model();
+	apply_environment_fields_to_ui();
+	(void)apikulture::collections_io::save_workspace(workspace_);
+}
+
+void AppState::delete_environment() {
+	if (workspace_.environments.size() <= 1) return;
+	commit_environment_fields_to_active();
+	workspace_.environments.erase(
+			workspace_.environments.begin() + workspace_.active_environment_index);
+	if (workspace_.active_environment_index >= static_cast<int>(workspace_.environments.size())) {
+		workspace_.active_environment_index = static_cast<int>(workspace_.environments.size()) - 1;
+	}
+	refresh_environment_names_model();
+	apply_environment_fields_to_ui();
+	(void)apikulture::collections_io::save_workspace(workspace_);
+}
+
+void AppState::commit_environment_name() {
+	if (!mutable_active_environment()) return;
+	auto& g = ui_->global<AppLogic>();
+	std::string name = to_std_string(g.get_environment_name_edit());
+	trim_in_place(name);
+	if (name.empty()) {
+		apply_environment_fields_to_ui();
+		return;
+	}
+	for (size_t i = 0; i < workspace_.environments.size(); ++i) {
+		if (static_cast<int>(i) != workspace_.active_environment_index
+				&& workspace_.environments[i].name == name) {
+			apply_environment_fields_to_ui();
+			return;
+		}
+	}
+	mutable_active_environment()->name = std::move(name);
+	refresh_environment_names_model();
+	apply_environment_fields_to_ui();
+	(void)apikulture::collections_io::save_workspace(workspace_);
+}
+
+void AppState::commit_environment_variables() {
+	commit_environment_fields_to_active();
 }

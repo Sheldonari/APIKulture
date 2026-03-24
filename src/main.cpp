@@ -93,6 +93,10 @@ int main(int argc, char** argv) {
 		g.set_response_headers(slint::SharedString(""));
 		g.set_response_jsonpath(slint::SharedString(""));
 		g.set_response_body(slint::SharedString(""));
+		g.set_active_environment_name(slint::SharedString("Default"));
+		g.set_environment_name_edit(slint::SharedString(""));
+		g.set_environment_base_url(slint::SharedString(""));
+		g.set_environment_variables(slint::SharedString(""));
 		{
 			auto font_model = std::make_shared<slint::VectorModel<slint::SharedString>>();
 			for (const char* f : apikulture::window_state::k_response_font_choices) {
@@ -127,6 +131,13 @@ int main(int argc, char** argv) {
 	logic.on_delete_request([&state]() { state.delete_request(); });
 	logic.on_duplicate_request([&state]() { state.duplicate_request(); });
 	logic.on_save_collections([&state]() { state.save_collections(); });
+	logic.on_environment_changed([&state](slint::SharedString name) {
+		state.environment_changed(shared_string_to_std(name));
+	});
+	logic.on_new_environment([&state]() { state.new_environment(); });
+	logic.on_delete_environment([&state]() { state.delete_environment(); });
+	logic.on_commit_environment_name([&state]() { state.commit_environment_name(); });
+	logic.on_commit_environment_variables([&state]() { state.commit_environment_variables(); });
 	logic.on_commit_collection_name([&state]() { state.commit_collection_name(); });
 	logic.on_commit_request_name([&state]() { state.commit_request_name(); });
 	logic.on_response_jsonpath_changed([&state]() { state.response_jsonpath_changed(); });
