@@ -36,11 +36,15 @@ struct Collection {
 	std::vector<Environment> environments{{Environment{}}};
 	int active_environment_index{0};
 	std::vector<RequestItem> items;
+	/// Last selected request index for this collection (persisted; restored when switching collections or on startup).
+	int last_selected_request_index{0};
 };
 
 /// All persisted workspace data. Root JSON file is `collections.json` (version 3: environments live per collection).
 struct Workspace {
 	std::vector<Collection> collections;
+	/// Which collection was selected when the workspace was last saved.
+	int last_selected_collection_index{0};
 };
 
 namespace collections_io {

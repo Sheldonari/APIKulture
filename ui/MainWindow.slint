@@ -275,6 +275,65 @@ component ResponseFontPicker inherits Rectangle {
 	}
 }
 
+/// Syntax-highlighted response body (read-only). Token kind: 0 punct, 1 string, 2 number, 3 keyword, 4 key.
+export struct TokenSpan {
+	text: string,
+	token-kind: int,
+}
+
+export struct ResponseLine {
+	spans: [TokenSpan],
+}
+
+component ResponseBodyViewer inherits Rectangle {
+	in property <[ResponseLine]> lines;
+	in property <string> font-family: "monospace";
+	in property <length> font-size: 12 * 1px;
+
+	function json-token-color(kind: int) -> color {
+		if (Palette.color-scheme == ColorScheme.dark) {
+			if (kind == 1) { return #98c379; }
+			if (kind == 2) { return #d19a66; }
+			if (kind == 3) { return #c678dd; }
+			if (kind == 4) { return #e06c75; }
+			return #abb2bf;
+		}
+		if (kind == 1) { return #0d7d4d; }
+		if (kind == 2) { return #b45309; }
+		if (kind == 3) { return #6f42c1; }
+		if (kind == 4) { return #c92a2a; }
+		return #24292f;
+	}
+
+	border-width: 1px;
+	border-color: Palette.border;
+	border-radius: 4px;
+	background: Palette.alternate-background;
+	clip: true;
+	vertical-stretch: 1;
+	min-height: 80px;
+
+	ListView {
+		width: 100%;
+		height: 100%;
+		for line in root.lines: HorizontalLayout {
+			alignment: start;
+			spacing: 0px;
+			padding-top: 1px;
+			padding-bottom: 1px;
+			min-height: root.font-size * 1.4;
+			for span in line.spans: Text {
+				text: span.text;
+				color: root.json-token-color(span.token-kind);
+				font-family: root.font-family;
+				font-size: root.font-size;
+				vertical-alignment: top;
+				overflow: clip;
+			}
+		}
+	}
+}
+
 export global AppLogic {
 	callback send-request();
 	callback cancel-request();
@@ -331,6 +390,7 @@ export global AppLogic {
 	in property <string> response-headers: "";
 	in-out property <string> response-jsonpath: "";
 	in-out property <string> response-body: "";
+	in property <[ResponseLine]> response-body-lines: [];
 	in-out property <string> response-body-font-family: "monospace";
 	in-out property <float> response-body-font-size: 12;
 	in property <[string]> response-font-names: [];
@@ -1062,13 +1122,10 @@ export component MainWindow inherits Window {
 								text: "Response body";
 								font-size: 11px;
 							}
-							// TextEdit embeds ScrollView + TextInput so viewport height is correct (scrollbar appears for long bodies).
-							TextEdit {
-								read-only: true;
-								text <=> AppLogic.response-body;
+							ResponseBodyViewer {
+								lines: AppLogic.response-body-lines;
 								font-family: AppLogic.response-body-font-family;
 								font-size: AppLogic.response-body-font-size * 1px;
-								wrap: word-wrap;
 								vertical-stretch: 1;
 								min-height: 80px;
 							}

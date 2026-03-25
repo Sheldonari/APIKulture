@@ -4,6 +4,7 @@
 #include "http_client.h"
 #include "query_string.hpp"
 #include "window_state.hpp"
+#include "response_json_highlighter.hpp"
 #include <jsoncons/json.hpp>
 #include <jsoncons_ext/jsonpath/jsonpath.hpp>
 #include <nlohmann/json.hpp>
@@ -123,19 +124,42 @@ apikulture::Environment* AppState::mutable_active_environment() {
 void AppState::push_response_body(const std::string& text) {
 	auto& g = ui_->global<AppLogic>();
 	g.set_response_body(slint::SharedString(text));
+	auto lines = std::make_shared<slint::VectorModel<ResponseLine>>();
+	if (text.empty()) {
+		g.set_response_body_lines(lines);
+		return;
+	}
+	if (auto json_lines = apikulture::response_highlight::highlight_json(text)) {
+		for (const auto& ln : *json_lines) {
+			auto inner = std::make_shared<slint::VectorModel<TokenSpan>>();
+			for (const auto& sp : ln) {
+				inner->push_back(TokenSpan{slint::SharedString(sp.text), sp.kind});
+			}
+			ResponseLine rl;
+			rl.spans = inner;
+			lines->push_back(rl);
+		}
+	} else {
+		for (const auto& ln : apikulture::response_highlight::highlight_plain_lines(text)) {
+			auto inner = std::make_shared<slint::VectorModel<TokenSpan>>();
+			for (const auto& sp : ln) {
+				inner->push_back(TokenSpan{slint::SharedString(sp.text), sp.kind});
+			}
+			ResponseLine rl;
+			rl.spans = inner;
+			lines->push_back(rl);
+		}
+	}
+	g.set_response_body_lines(lines);
 }
 
 AppState::AppState(const MainWindowHandle& ui) : ui_(ui) {
 	workspace_ = apikulture::collections_io::load_workspace_or_default();
-	if (collection_index_ >= static_cast<int>(workspace_.collections.size())) {
+	collection_index_ = workspace_.last_selected_collection_index;
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(workspace_.collections.size())) {
 		collection_index_ = 0;
 	}
-	if (!workspace_.collections.empty()) {
-		auto& col = workspace_.collections[collection_index_];
-		if (request_index_ >= static_cast<int>(col.items.size())) {
-			request_index_ = 0;
-		}
-	}
+	restore_request_index_for_current_collection();
 }
 
 AppState::~AppState() {
@@ -234,8 +258,31 @@ void AppState::push_name_edits_to_ui() {
 	}
 }
 
+void AppState::restore_request_index_for_current_collection() {
+	if (collection_index_ < 0 || collection_index_ >= static_cast<int>(workspace_.collections.size())) {
+		request_index_ = 0;
+		return;
+	}
+	auto& col = workspace_.collections[static_cast<size_t>(collection_index_)];
+	if (col.items.empty()) {
+		request_index_ = 0;
+		return;
+	}
+	request_index_ = col.last_selected_request_index;
+	if (request_index_ < 0 || request_index_ >= static_cast<int>(col.items.size())) {
+		request_index_ = 0;
+	}
+}
+
 void AppState::push_selection_to_ui() {
 	auto& g = ui_->global<AppLogic>();
+	if (collection_index_ >= 0 && collection_index_ < static_cast<int>(workspace_.collections.size())) {
+		workspace_.last_selected_collection_index = collection_index_;
+		auto& col = workspace_.collections[static_cast<size_t>(collection_index_)];
+		if (!col.items.empty() && request_index_ >= 0 && request_index_ < static_cast<int>(col.items.size())) {
+			col.last_selected_request_index = request_index_;
+		}
+	}
 	g.set_selected_collection_index(collection_index_);
 	g.set_selected_request_index(request_index_);
 	push_name_edits_to_ui();
@@ -307,12 +354,7 @@ void AppState::select_collection(int index) {
 	if (index < 0 || index >= static_cast<int>(workspace_.collections.size())) return;
 	commit_form_to_current_item();
 	collection_index_ = index;
-	request_index_ = 0;
-	if (!workspace_.collections[static_cast<size_t>(collection_index_)].items.empty()) {
-		if (request_index_ >= static_cast<int>(workspace_.collections[static_cast<size_t>(collection_index_)].items.size())) {
-			request_index_ = 0;
-		}
-	}
+	restore_request_index_for_current_collection();
 	refresh_request_names_model();
 	refresh_environment_names_model();
 	push_selection_to_ui();
@@ -391,7 +433,7 @@ void AppState::collection_delete_dialog_confirm() {
 	} else if (collection_index_ > idx) {
 		collection_index_--;
 	}
-	request_index_ = 0;
+	restore_request_index_for_current_collection();
 	refresh_collection_names_model();
 	refresh_request_names_model();
 	refresh_environment_names_model();

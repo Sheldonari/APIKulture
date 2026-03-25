@@ -87,7 +87,8 @@ void to_json(nlohmann::json& j, const Collection& c) {
 	j = nlohmann::json{{"name", c.name},
 	                     {"environments", c.environments},
 	                     {"active_environment_index", c.active_environment_index},
-	                     {"items", c.items}};
+	                     {"items", c.items},
+	                     {"last_selected_request_index", c.last_selected_request_index}};
 }
 
 void from_json(const nlohmann::json& j, Collection& c) {
@@ -113,6 +114,15 @@ void from_json(const nlohmann::json& j, Collection& c) {
 	if (c.items.empty()) {
 		c.items.push_back(RequestItem{});
 		c.items.back().name = "Request 1";
+	}
+	c.last_selected_request_index = j.value("last_selected_request_index", 0);
+	if (!c.items.empty()) {
+		if (c.last_selected_request_index < 0
+				|| c.last_selected_request_index >= static_cast<int>(c.items.size())) {
+			c.last_selected_request_index = 0;
+		}
+	} else {
+		c.last_selected_request_index = 0;
 	}
 	if (!c.environments.empty()) {
 		if (c.active_environment_index < 0
@@ -228,6 +238,11 @@ Workspace load_workspace_or_default() {
 		(void)version;
 		parse_collections_array(root, w);
 		migrate_legacy_workspace_environments_to_collections(root, w);
+		w.last_selected_collection_index = root.value("last_selected_collection_index", 0);
+		if (w.last_selected_collection_index < 0
+				|| w.last_selected_collection_index >= static_cast<int>(w.collections.size())) {
+			w.last_selected_collection_index = 0;
+		}
 		return w;
 	} catch (...) {
 		return make_default_workspace();
@@ -240,6 +255,7 @@ bool save_workspace(const Workspace& workspace) {
 		fs::create_directories(fs::path(path).parent_path());
 		nlohmann::json root;
 		root["version"] = 3;
+		root["last_selected_collection_index"] = workspace.last_selected_collection_index;
 		root["collections"] = workspace.collections;
 		std::ofstream out(path, std::ios::trunc);
 		if (!out) return false;

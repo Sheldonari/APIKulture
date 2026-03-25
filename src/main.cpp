@@ -127,6 +127,7 @@ int main(int argc, char** argv) {
 		g.set_response_headers(slint::SharedString(""));
 		g.set_response_jsonpath(slint::SharedString(""));
 		g.set_response_body(slint::SharedString(""));
+		g.set_response_body_lines(std::make_shared<slint::VectorModel<ResponseLine>>());
 		g.set_active_environment_name(slint::SharedString("Default"));
 		g.set_environment_name_edit(slint::SharedString(""));
 		g.set_environment_base_url(slint::SharedString(""));

@@ -76,6 +76,7 @@ private:
 	void apply_environment_fields_to_ui();
 	void push_name_edits_to_ui();
 	void push_selection_to_ui();
+	void restore_request_index_for_current_collection();
 	void refresh_query_param_models();
 	void apply_openapi_import_result(apikulture::openapi::ImportResult&& result);
 	std::shared_ptr<slint::VectorModel<slint::SharedString>> make_name_model(
