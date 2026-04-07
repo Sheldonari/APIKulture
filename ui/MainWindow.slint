@@ -337,6 +337,7 @@ component ResponseBodyViewer inherits Rectangle {
 export global AppLogic {
 	callback send-request();
 	callback cancel-request();
+	callback request-url-accepted();
 	callback select-collection(int);
 	callback select-request(int);
 	callback new-collection();
@@ -798,11 +799,7 @@ export component MainWindow inherits Window {
 					text <=> AppLogic.url;
 					horizontal-stretch: 1;
 					accepted => {
-						if (AppLogic.loading) {
-							AppLogic.cancel-request();
-						} else {
-							AppLogic.send-request();
-						}
+						AppLogic.request-url-accepted();
 					}
 				}
 

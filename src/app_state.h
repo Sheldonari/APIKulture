@@ -59,6 +59,8 @@ public:
 	void remove_query_param(int index);
 	/// UI timer callback: updates live elapsed time while `loading` is true.
 	void tick_request_elapsed();
+	/// Enter in URL field: cancel if loading; else if URL changed since last import, parse `?query` into the table; then send.
+	void request_url_accepted();
 
 	/// Call after MainWindow is created to load data into UI models.
 	void init_collections_ui();
@@ -83,6 +85,10 @@ private:
 	void restore_request_index_for_current_collection();
 	void refresh_query_param_models();
 	void apply_openapi_import_result(apikulture::openapi::ImportResult&& result);
+	/// If URL field differs from \ref last_url_field_sync_, parse `?query` into the table (Enter / Send).
+	void sync_url_field_to_query_table_if_changed();
+	/// Parses \a raw (full URL or path with query) into the current item; updates UI. Returns false if unusable.
+	bool try_apply_url_import_from_text(const std::string& raw_utf8);
 	std::shared_ptr<slint::VectorModel<slint::SharedString>> make_name_model(
 			const std::vector<std::string>& names);
 
@@ -114,6 +120,8 @@ private:
 	std::optional<std::chrono::steady_clock::time_point> request_elapsed_start_;
 	/// Collection index to remove after Slint delete confirmation; -1 when not applicable.
 	int pending_delete_collection_index_{-1};
+	/// Last URL field value we already split into path + query table (trimmed); Enter skips re-import when unchanged.
+	std::string last_url_field_sync_;
 };
 
 #endif  // APIKULTURE_APP_STATE_H

@@ -3,6 +3,7 @@
 #include "file_dialog.hpp"
 #include "http_client.h"
 #include "query_string.hpp"
+#include "url_import.hpp"
 #include "window_state.hpp"
 #include "response_json_highlighter.hpp"
 #include <jsoncons/json.hpp>
@@ -297,6 +298,20 @@ void AppState::push_selection_to_ui() {
 	push_name_edits_to_ui();
 }
 
+void AppState::sync_url_field_to_query_table_if_changed() {
+	auto& g = ui_->global<AppLogic>();
+	std::string url_now = to_std_string(g.get_url());
+	trim_in_place(url_now);
+	if (url_now == last_url_field_sync_) {
+		g.set_import_status(slint::SharedString(""));
+		return;
+	}
+	if (try_apply_url_import_from_text(url_now)) {
+		last_url_field_sync_ = to_std_string(g.get_url());
+		trim_in_place(last_url_field_sync_);
+	}
+}
+
 void AppState::commit_form_to_current_item() {
 	commit_environment_fields_to_active();
 	if (workspace_.collections.empty()) return;
@@ -331,6 +346,9 @@ void AppState::apply_form_from_current_item() {
 	g.set_request_body(slint::SharedString(item.body));
 	g.set_response_jsonpath(slint::SharedString(item.jsonpath));
 	refresh_query_param_models();
+
+	last_url_field_sync_ = item.url;
+	trim_in_place(last_url_field_sync_);
 
 	g.set_response_status(slint::SharedString(item.last_response_status));
 	g.set_response_headers(slint::SharedString(item.last_response_headers));
@@ -661,6 +679,7 @@ void AppState::commit_request_name() {
 void AppState::send_request() {
 	if (worker_busy_) return;
 	commit_form_to_current_item();
+	sync_url_field_to_query_table_if_changed();
 
 	auto& g = ui_->global<AppLogic>();
 	pending_method_ = to_std_string(g.get_method());
@@ -683,7 +702,11 @@ void AppState::send_request() {
 
 	std::string url_after_vars = apikulture::substitute_variables(raw_url, var_map);
 	pending_url_ = apikulture::resolve_url_with_base(base_subst, url_after_vars);
+	apikulture::normalize_http_url_delimiters_inplace(pending_url_);
 	if (apikulture::RequestItem* item = mutable_current_request_item()) {
+		if (apikulture::has_query_params_to_append(item->query_params, var_map)) {
+			pending_url_ = apikulture::strip_url_query_preserving_fragment(std::move(pending_url_));
+		}
 		pending_url_ = apikulture::append_query_params_to_url(pending_url_, item->query_params, var_map);
 	}
 	pending_headers_ = apikulture::substitute_variables(raw_headers, var_map);
@@ -738,6 +761,55 @@ void AppState::tick_request_elapsed() {
 	auto& g = ui_->global<AppLogic>();
 	if (!g.get_loading() || !request_elapsed_start_) return;
 	g.set_request_elapsed(slint::SharedString(format_elapsed_since(*request_elapsed_start_)));
+}
+
+bool AppState::try_apply_url_import_from_text(const std::string& raw_utf8) {
+	auto& g = ui_->global<AppLogic>();
+	apikulture::RequestItem* item = mutable_current_request_item();
+	if (!item) return false;
+
+	std::map<std::string, std::string> var_map;
+	std::string base_subst;
+	if (apikulture::Environment* env = mutable_active_environment()) {
+		const auto local = apikulture::collections_io::load_local_overrides();
+		var_map = apikulture::effective_variable_map(*env, local);
+		std::string base_raw = apikulture::effective_base_url_field(*env, local);
+		if (base_raw.empty()) {
+			if (auto it = var_map.find("base_url"); it != var_map.end()) base_raw = it->second;
+		}
+		base_subst = apikulture::substitute_variables(base_raw, var_map);
+	}
+
+	std::string url_out;
+	std::vector<apikulture::QueryParam> params;
+	if (!apikulture::url_import::parse_pasted_url_into_request(raw_utf8, base_subst, url_out, params)) {
+		g.set_import_status(slint::SharedString("URL: not a usable address or query string."));
+		return false;
+	}
+
+	item->url = std::move(url_out);
+	item->query_params = std::move(params);
+	if (item->query_params.empty()) {
+		item->query_params.push_back({});
+	}
+	item->method = "GET";
+	g.set_import_status(slint::SharedString(""));
+	g.set_method(slint::SharedString("GET"));
+	g.set_url(slint::SharedString(item->url));
+	refresh_query_param_models();
+	(void)apikulture::collections_io::save_workspace(workspace_);
+	return true;
+}
+
+void AppState::request_url_accepted() {
+	auto& g = ui_->global<AppLogic>();
+	if (g.get_loading()) {
+		cancel_request();
+		return;
+	}
+	commit_form_to_current_item();
+	sync_url_field_to_query_table_if_changed();
+	send_request();
 }
 
 void AppState::worker_run() {

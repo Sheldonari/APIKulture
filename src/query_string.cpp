@@ -37,6 +37,23 @@ std::string url_encode_query_component(std::string_view s) {
 	return out;
 }
 
+void normalize_http_url_delimiters_inplace(std::string& s) {
+	static const char fw_q[] = "\xEF\xBC\x9F";    // U+FF1F FULLWIDTH QUESTION MARK
+	static const char fw_amp[] = "\xEF\xBC\x86";  // U+FF06 FULLWIDTH AMPERSAND
+	const size_t fw_q_len = sizeof(fw_q) - 1;
+	const size_t fw_amp_len = sizeof(fw_amp) - 1;
+	for (;;) {
+		const size_t p = s.find(fw_q);
+		if (p == std::string::npos) break;
+		s.replace(p, fw_q_len, "?");
+	}
+	for (;;) {
+		const size_t p = s.find(fw_amp);
+		if (p == std::string::npos) break;
+		s.replace(p, fw_amp_len, "&");
+	}
+}
+
 std::string append_query_params_to_url(const std::string& url,
 		const std::vector<QueryParam>& params,
 		const std::map<std::string, std::string>& vars) {
@@ -72,6 +89,26 @@ std::string append_query_params_to_url(const std::string& url,
 	std::string mid = path_part;
 	if (!merged_qs.empty()) mid += '?' + merged_qs;
 	return mid + frag;
+}
+
+std::string strip_url_query_preserving_fragment(std::string url) {
+	const size_t hash_pos = url.find('#');
+	const std::string before_frag = hash_pos == std::string::npos ? url : url.substr(0, hash_pos);
+	const std::string frag = hash_pos == std::string::npos ? std::string() : url.substr(hash_pos);
+	const size_t qpos = before_frag.find('?');
+	if (qpos == std::string::npos) return url;
+	return before_frag.substr(0, qpos) + frag;
+}
+
+bool has_query_params_to_append(const std::vector<QueryParam>& params,
+		const std::map<std::string, std::string>& vars) {
+	for (const auto& p : params) {
+		if (!p.enabled) continue;
+		std::string k = substitute_variables(p.key, vars);
+		trim_ascii(k);
+		if (!k.empty()) return true;
+	}
+	return false;
 }
 
 }  // namespace apikulture

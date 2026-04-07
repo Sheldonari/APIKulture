@@ -70,6 +70,8 @@ add_executable(apikulture
 	src/openapi_import.cpp
 	src/file_dialog.cpp
 	src/response_json_highlighter.cpp
+	src/clipboard.cpp
+	src/url_import.cpp
 )
 
 target_include_directories(apikulture PRIVATE
