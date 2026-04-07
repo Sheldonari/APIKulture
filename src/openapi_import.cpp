@@ -338,7 +338,7 @@ ImportResult import_from_json_text(std::string raw, std::optional<std::string> s
 				const std::string name = p.value("name", "");
 				if (name.empty()) continue;
 				if (in == "query") {
-					item.query_params.emplace_back(name, param_example_value(p));
+					item.query_params.push_back(QueryParam{name, param_example_value(p), true});
 				} else if (in == "header") {
 					header_lines.emplace_back(name, param_example_value(p));
 				}

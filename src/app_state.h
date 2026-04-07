@@ -2,6 +2,7 @@
 #define APIKULTURE_APP_STATE_H
 
 #include <atomic>
+#include <chrono>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -53,8 +54,11 @@ public:
 
 	void query_param_key_edited(int index, slint::SharedString text);
 	void query_param_value_edited(int index, slint::SharedString text);
+	void query_param_enabled_changed(int index, bool enabled);
 	void add_query_param();
 	void remove_query_param(int index);
+	/// UI timer callback: updates live elapsed time while `loading` is true.
+	void tick_request_elapsed();
 
 	/// Call after MainWindow is created to load data into UI models.
 	void init_collections_ui();
@@ -105,6 +109,9 @@ private:
 	int request_index_{0};
 	std::shared_ptr<slint::VectorModel<slint::SharedString>> query_param_keys_model_;
 	std::shared_ptr<slint::VectorModel<slint::SharedString>> query_param_values_model_;
+	std::shared_ptr<slint::VectorModel<bool>> query_param_enabled_model_;
+	/// Monotonic start time for the in-flight HTTP request (UI-thread only).
+	std::optional<std::chrono::steady_clock::time_point> request_elapsed_start_;
 	/// Collection index to remove after Slint delete confirmation; -1 when not applicable.
 	int pending_delete_collection_index_{-1};
 };

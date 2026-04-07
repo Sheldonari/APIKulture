@@ -46,7 +46,7 @@ void from_json(const nlohmann::json& j, Environment& e) {
 void to_json(nlohmann::json& j, const RequestItem& r) {
 	nlohmann::json qp = nlohmann::json::array();
 	for (const auto& p : r.query_params) {
-		qp.push_back(nlohmann::json{{"key", p.first}, {"value", p.second}});
+		qp.push_back(nlohmann::json{{"key", p.key}, {"value", p.value}, {"enabled", p.enabled}});
 	}
 	j = nlohmann::json{{"name", r.name},
 	                     {"method", r.method},
@@ -70,7 +70,11 @@ void from_json(const nlohmann::json& j, RequestItem& r) {
 	if (j.contains("query_params") && j["query_params"].is_array()) {
 		for (const auto& row : j["query_params"]) {
 			if (!row.is_object()) continue;
-			r.query_params.emplace_back(row.value("key", std::string()), row.value("value", std::string()));
+			QueryParam qp;
+			qp.key = row.value("key", std::string());
+			qp.value = row.value("value", std::string());
+			qp.enabled = row.value("enabled", true);
+			r.query_params.push_back(std::move(qp));
 		}
 	}
 	r.headers = j.value("headers", std::string());

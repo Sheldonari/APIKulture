@@ -1,4 +1,4 @@
-import { VerticalBox, HorizontalBox, LineEdit, ScrollView, ComboBox, TextEdit, ListView, Palette, Slider } from "std-widgets.slint";
+import { VerticalBox, HorizontalBox, LineEdit, ScrollView, ComboBox, TextEdit, ListView, Palette, Slider, CheckBox } from "std-widgets.slint";
 
 /// Filled-style push button with sharp corners (Material `Button` uses a large pill radius).
 component RectButton inherits Rectangle {
@@ -354,6 +354,7 @@ export global AppLogic {
 	callback commit-environment-variables();
 	callback query-param-key-edited(int, string);
 	callback query-param-value-edited(int, string);
+	callback query-param-enabled-changed(int, bool);
 	callback add-query-param();
 	callback remove-query-param(int);
 	callback commit-collection-name();
@@ -364,6 +365,7 @@ export global AppLogic {
 	callback commit-response-font-size(float);
 	callback collection-delete-dialog-cancel();
 	callback collection-delete-dialog-confirm();
+	callback request-elapsed-tick();
 
 	in-out property <string> collection-name-edit: "";
 	in-out property <string> request-name-edit: "";
@@ -381,12 +383,15 @@ export global AppLogic {
 
 	in property <[string]> query-param-keys: [];
 	in property <[string]> query-param-values: [];
+	in property <[bool]> query-param-enabled: [];
 
 	in-out property <string> method: "GET";
 	in-out property <string> url: "";
 	in-out property <string> request-headers: "";
 	in-out property <string> request-body: "";
 	in property <string> response-status: "";
+	/// Live and final request duration, e.g. "1.23 s"; empty when idle / after switching request.
+	in property <string> request-elapsed: "";
 	in property <string> response-headers: "";
 	in-out property <string> response-jsonpath: "";
 	in-out property <string> response-body: "";
@@ -424,6 +429,14 @@ export component MainWindow inherits Window {
 	in-out property <length> request-query-panel-height: 400px;
 	/// Height of the response headers block (label + scroll area) above the horizontal splitter.
 	in-out property <length> response-headers-panel-height: 120px;
+
+	Timer {
+		interval: 100ms;
+		running: AppLogic.loading;
+		triggered() => {
+			AppLogic.request-elapsed-tick();
+		}
+	}
 
 	key-scope := FocusScope {
 		width: 100%;
@@ -842,47 +855,85 @@ export component MainWindow inherits Window {
 							VerticalBox {
 								width: 100%;
 								horizontal-stretch: 1;
+								vertical-stretch: 0;
+								alignment: start;
 								spacing: 0px;
 								padding: 0px;
-								for key[idx] in AppLogic.query-param-keys: HorizontalBox {
+								GridLayout {
 									width: 100%;
-									spacing: 0px;
-									padding: 0px;
-									alignment: stretch;
-									CompactLineEdit {
-										font-family: AppLogic.response-body-font-family;
-										font-size: AppLogic.response-body-font-size * 1px;
-										placeholder-text: "name";
-										text: key;
-										horizontal-stretch: 1;
-										edited => {
-											AppLogic.query-param-key-edited(idx, self.text);
+									vertical-stretch: 0;
+									spacing: 4px;
+									Row {
+										Text {
+											text: "On";
+											font-size: 11px;
+											font-weight: 600;
+											vertical-alignment: top;
+											min-width: 28px;
 										}
-										accepted => {
-											AppLogic.query-param-key-edited(idx, self.text);
+										Text {
+											text: "Name";
+											font-size: 11px;
+											font-weight: 600;
+											vertical-alignment: top;
+											horizontal-stretch: 1;
+										}
+										Text {
+											text: "Value";
+											font-size: 11px;
+											font-weight: 600;
+											vertical-alignment: top;
+											horizontal-stretch: 1;
+										}
+										Text {
+											text: "";
+											min-width: 28px;
 										}
 									}
-									CompactLineEdit {
-										font-family: AppLogic.response-body-font-family;
-										font-size: AppLogic.response-body-font-size * 1px;
-										placeholder-text: "value";
-										text: AppLogic.query-param-values[idx];
-										horizontal-stretch: 1;
-										edited => {
-											AppLogic.query-param-value-edited(idx, self.text);
+									for key[idx] in AppLogic.query-param-keys: Row {
+										CheckBox {
+											checked: AppLogic.query-param-enabled[idx];
+											min-width: 28px;
+											min-height: 28px;
+											toggled => {
+												AppLogic.query-param-enabled-changed(idx, self.checked);
+											}
 										}
-										accepted => {
-											AppLogic.query-param-value-edited(idx, self.text);
+										CompactLineEdit {
+											font-family: AppLogic.response-body-font-family;
+											font-size: AppLogic.response-body-font-size * 1px;
+											placeholder-text: "name";
+											text: key;
+											horizontal-stretch: 1;
+											edited => {
+												AppLogic.query-param-key-edited(idx, self.text);
+											}
+											accepted => {
+												AppLogic.query-param-key-edited(idx, self.text);
+											}
 										}
-									}
-									RectButton {
-										text: "×";
-										min-btn-height: 28px;
-										min-btn-width: 28px;
-										pad-h: 4px;
-										pad-v: 2px;
-										clicked => {
-											AppLogic.remove-query-param(idx);
+										CompactLineEdit {
+											font-family: AppLogic.response-body-font-family;
+											font-size: AppLogic.response-body-font-size * 1px;
+											placeholder-text: "value";
+											text: AppLogic.query-param-values[idx];
+											horizontal-stretch: 1;
+											edited => {
+												AppLogic.query-param-value-edited(idx, self.text);
+											}
+											accepted => {
+												AppLogic.query-param-value-edited(idx, self.text);
+											}
+										}
+										RectButton {
+											text: "×";
+											min-btn-height: 28px;
+											min-btn-width: 28px;
+											pad-h: 4px;
+											pad-v: 2px;
+											clicked => {
+												AppLogic.remove-query-param(idx);
+											}
 										}
 									}
 								}
@@ -1050,15 +1101,24 @@ export component MainWindow inherits Window {
 
 					HorizontalBox {
 						padding: 0px;
-						spacing: 4px;
+						spacing: 8px;
 						Text {
 							text: "Status: ";
 							font-weight: 600;
+							vertical-alignment: center;
 						}
 						Text {
 							text: AppLogic.response-status;
 							overflow: elide;
 							horizontal-stretch: 1;
+							vertical-alignment: center;
+						}
+						Text {
+							text: AppLogic.request-elapsed == "" ? "" : "Elapsed " + AppLogic.request-elapsed;
+							font-size: 11px;
+							color: Palette.foreground;
+							vertical-alignment: center;
+							horizontal-stretch: 0;
 						}
 					}
 

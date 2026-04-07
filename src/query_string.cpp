@@ -38,13 +38,14 @@ std::string url_encode_query_component(std::string_view s) {
 }
 
 std::string append_query_params_to_url(const std::string& url,
-		const std::vector<std::pair<std::string, std::string>>& params,
+		const std::vector<QueryParam>& params,
 		const std::map<std::string, std::string>& vars) {
 	std::ostringstream new_qs_stream;
 	bool first_pair = true;
 	for (const auto& p : params) {
-		std::string k = substitute_variables(p.first, vars);
-		std::string v = substitute_variables(p.second, vars);
+		if (!p.enabled) continue;
+		std::string k = substitute_variables(p.key, vars);
+		std::string v = substitute_variables(p.value, vars);
 		trim_ascii(k);
 		trim_ascii(v);
 		if (k.empty()) continue;

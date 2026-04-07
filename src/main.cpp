@@ -194,6 +194,8 @@ int main(int argc, char** argv) {
 	logic.on_query_param_value_edited([&state](int idx, slint::SharedString text) {
 		state.query_param_value_edited(idx, std::move(text));
 	});
+	logic.on_query_param_enabled_changed([&state](int idx, bool on) { state.query_param_enabled_changed(idx, on); });
+	logic.on_request_elapsed_tick([&state]() { state.tick_request_elapsed(); });
 	logic.on_add_query_param([&state]() { state.add_query_param(); });
 	logic.on_remove_query_param([&state](int idx) { state.remove_query_param(idx); });
 	logic.on_commit_collection_name([&state]() { state.commit_collection_name(); });

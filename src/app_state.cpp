@@ -12,10 +12,19 @@
 #include <string_view>
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <optional>
 #include <slint_models.h>
 
 namespace {
+
+std::string format_elapsed_since(std::chrono::steady_clock::time_point start) {
+	using namespace std::chrono;
+	const auto ms = duration_cast<milliseconds>(steady_clock::now() - start).count();
+	char buf[48];
+	std::snprintf(buf, sizeof(buf), "%.2f s", static_cast<double>(ms) / 1000.0);
+	return buf;
+}
 
 std::vector<std::pair<std::string, std::string>> parse_headers(const std::string& text) {
 	std::vector<std::pair<std::string, std::string>> out;
@@ -315,6 +324,7 @@ void AppState::apply_form_from_current_item() {
 
 	const auto& item = col.items[static_cast<size_t>(request_index_)];
 	auto& g = ui_->global<AppLogic>();
+	g.set_request_elapsed(slint::SharedString(""));
 	g.set_method(slint::SharedString(item.method));
 	g.set_url(slint::SharedString(item.url));
 	g.set_request_headers(slint::SharedString(item.headers));
@@ -684,6 +694,7 @@ void AppState::send_request() {
 		last_success_content_type_ = std::nullopt;
 		g.set_response_status(slint::SharedString(""));
 		g.set_response_headers(slint::SharedString(""));
+		g.set_request_elapsed(slint::SharedString(""));
 		push_response_body("Enter a URL or path");
 		return;
 	}
@@ -692,6 +703,7 @@ void AppState::send_request() {
 		last_success_content_type_ = std::nullopt;
 		g.set_response_status(slint::SharedString(""));
 		g.set_response_headers(slint::SharedString(""));
+		g.set_request_elapsed(slint::SharedString(""));
 		push_response_body(
 				"Relative URL needs a Base URL for this environment (sidebar), or use an absolute https://… URL.");
 		return;
@@ -700,6 +712,8 @@ void AppState::send_request() {
 	cancelled_ = false;
 	last_success_response_body_ = std::nullopt;
 	last_success_content_type_ = std::nullopt;
+	request_elapsed_start_ = std::chrono::steady_clock::now();
+	g.set_request_elapsed(slint::SharedString("0.00 s"));
 	g.set_loading(true);
 	g.set_response_status(slint::SharedString("Loading..."));
 	g.set_response_headers(slint::SharedString(""));
@@ -718,6 +732,12 @@ void AppState::send_request() {
 
 void AppState::cancel_request() {
 	cancelled_ = true;
+}
+
+void AppState::tick_request_elapsed() {
+	auto& g = ui_->global<AppLogic>();
+	if (!g.get_loading() || !request_elapsed_start_) return;
+	g.set_request_elapsed(slint::SharedString(format_elapsed_since(*request_elapsed_start_)));
 }
 
 void AppState::worker_run() {
@@ -742,6 +762,10 @@ void AppState::worker_run() {
 
 		slint::invoke_from_event_loop([this, res, response_content_type]() {
 			auto& g = ui_->global<AppLogic>();
+			if (request_elapsed_start_) {
+				g.set_request_elapsed(slint::SharedString(format_elapsed_since(*request_elapsed_start_)));
+				request_elapsed_start_.reset();
+			}
 			g.set_loading(false);
 			if (apikulture::RequestItem* item = mutable_current_request_item()) {
 				item->jsonpath = to_std_string(g.get_response_jsonpath());
@@ -863,35 +887,43 @@ void AppState::commit_environment_variables() {
 void AppState::refresh_query_param_models() {
 	std::vector<std::string> keys;
 	std::vector<std::string> vals;
+	std::vector<bool> enabled;
 	if (apikulture::RequestItem* it = mutable_current_request_item()) {
 		/// Match stored rows to the visible editor: one blank row is always persisted so "+ param"
 		/// adds a real second row (previously the list showed a synthetic row while `query_params` stayed empty).
 		if (it->query_params.empty()) {
-			it->query_params.push_back({"", ""});
+			it->query_params.push_back({});
 		}
 		for (const auto& p : it->query_params) {
-			keys.push_back(p.first);
-			vals.push_back(p.second);
+			keys.push_back(p.key);
+			vals.push_back(p.value);
+			enabled.push_back(p.enabled);
 		}
 	}
 	if (keys.empty()) {
 		keys.push_back("");
 		vals.push_back("");
+		enabled.push_back(true);
 	}
 	query_param_keys_model_ = make_name_model(keys);
 	query_param_values_model_ = make_name_model(vals);
+	query_param_enabled_model_ = std::make_shared<slint::VectorModel<bool>>();
+	for (bool e : enabled) {
+		query_param_enabled_model_->push_back(e);
+	}
 	auto& g = ui_->global<AppLogic>();
 	g.set_query_param_keys(query_param_keys_model_);
 	g.set_query_param_values(query_param_values_model_);
+	g.set_query_param_enabled(query_param_enabled_model_);
 }
 
 void AppState::query_param_key_edited(int index, slint::SharedString text) {
 	auto* item = mutable_current_request_item();
 	if (!item || index < 0) return;
 	while (static_cast<size_t>(index) >= item->query_params.size()) {
-		item->query_params.push_back({"", ""});
+		item->query_params.push_back({});
 	}
-	item->query_params[static_cast<size_t>(index)].first = to_std_string(text);
+	item->query_params[static_cast<size_t>(index)].key = to_std_string(text);
 	if (query_param_keys_model_) {
 		const int rc = query_param_keys_model_->row_count();
 		if (index < rc) {
@@ -904,9 +936,9 @@ void AppState::query_param_value_edited(int index, slint::SharedString text) {
 	auto* item = mutable_current_request_item();
 	if (!item || index < 0) return;
 	while (static_cast<size_t>(index) >= item->query_params.size()) {
-		item->query_params.push_back({"", ""});
+		item->query_params.push_back({});
 	}
-	item->query_params[static_cast<size_t>(index)].second = to_std_string(text);
+	item->query_params[static_cast<size_t>(index)].value = to_std_string(text);
 	if (query_param_values_model_) {
 		const int rc = query_param_values_model_->row_count();
 		if (index < rc) {
@@ -915,13 +947,28 @@ void AppState::query_param_value_edited(int index, slint::SharedString text) {
 	}
 }
 
+void AppState::query_param_enabled_changed(int index, bool enabled) {
+	auto* item = mutable_current_request_item();
+	if (!item || index < 0) return;
+	while (static_cast<size_t>(index) >= item->query_params.size()) {
+		item->query_params.push_back({});
+	}
+	item->query_params[static_cast<size_t>(index)].enabled = enabled;
+	if (query_param_enabled_model_) {
+		const int rc = query_param_enabled_model_->row_count();
+		if (index < rc) {
+			query_param_enabled_model_->set_row_data(index, enabled);
+		}
+	}
+}
+
 void AppState::add_query_param() {
 	auto* item = mutable_current_request_item();
 	if (!item) return;
 	if (item->query_params.empty()) {
-		item->query_params.push_back({"", ""});
+		item->query_params.push_back({});
 	}
-	item->query_params.push_back({"", ""});
+	item->query_params.push_back({});
 	refresh_query_param_models();
 }
 
@@ -929,13 +976,13 @@ void AppState::remove_query_param(int index) {
 	auto* item = mutable_current_request_item();
 	if (!item || index < 0) return;
 	if (item->query_params.size() <= 1) {
-		item->query_params[0] = {"", ""};
+		item->query_params[0] = {};
 		refresh_query_param_models();
 		return;
 	}
 	if (static_cast<size_t>(index) < item->query_params.size()) {
 		item->query_params.erase(item->query_params.begin() + index);
 	}
-	if (item->query_params.empty()) item->query_params.push_back({"", ""});
+	if (item->query_params.empty()) item->query_params.push_back({});
 	refresh_query_param_models();
 }
