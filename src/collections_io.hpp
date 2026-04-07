@@ -17,13 +17,20 @@ struct QueryParam {
 	bool enabled{true};
 };
 
+/// One request header row (same shape as query params; supports {{var}} in key/value on send).
+struct HeaderRow {
+	std::string key;
+	std::string value;
+	bool enabled{true};
+};
+
 struct RequestItem {
 	std::string name{"New request"};
 	std::string method{"GET"};
 	std::string url;
 	/// GET-style query parameters (applied to the URL on send; supports {{var}} in keys/values).
 	std::vector<QueryParam> query_params;
-	std::string headers;
+	std::vector<HeaderRow> request_headers;
 	std::string body;
 	/// Optional JSONPath applied to the response body when displaying (e.g. "$.data.items[*]").
 	std::string jsonpath;

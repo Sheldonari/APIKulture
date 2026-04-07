@@ -402,6 +402,11 @@ export global AppLogic {
 	callback query-param-enabled-changed(int, bool);
 	callback add-query-param();
 	callback remove-query-param(int);
+	callback request-header-key-edited(int, string);
+	callback request-header-value-edited(int, string);
+	callback request-header-enabled-changed(int, bool);
+	callback add-request-header();
+	callback remove-request-header(int);
 	callback commit-collection-name();
 	callback commit-request-name();
 	callback response-jsonpath-changed();
@@ -430,9 +435,12 @@ export global AppLogic {
 	in property <[string]> query-param-values: [];
 	in property <[bool]> query-param-enabled: [];
 
+	in property <[string]> request-header-keys: [];
+	in property <[string]> request-header-values: [];
+	in property <[bool]> request-header-enabled: [];
+
 	in-out property <string> method: "GET";
 	in-out property <string> url: "";
-	in-out property <string> request-headers: "";
 	in-out property <string> request-body: "";
 	in property <string> response-status: "";
 	/// Live and final request duration, e.g. "1.23 s"; empty when idle / after switching request.
@@ -472,6 +480,8 @@ export component MainWindow inherits Window {
 	in-out property <length> sidebar-collections-height: 220px;
 	/// Height of the query-parameters block (label + list + “+ param”) above the horizontal splitter.
 	in-out property <length> request-query-panel-height: 400px;
+	/// Height of the request headers block (label + grid + “+ header”) above the splitter before the body.
+	in-out property <length> request-headers-panel-height: 200px;
 	/// Height of the response headers block (label + scroll area) above the horizontal splitter.
 	in-out property <length> response-headers-panel-height: 120px;
 
@@ -999,29 +1009,137 @@ export component MainWindow inherits Window {
 						spacing: 4px;
 						padding: 0px;
 
-						Text {
-							text: "Headers (one per line: Key: value)";
-							font-size: 11px;
-						}
-						ScrollView {
-							max-height: 120px;
+						VerticalBox {
+							height: request-headers-panel-height;
 							vertical-stretch: 0;
-							TextEdit {
-								text <=> AppLogic.request-headers;
-								font-family: "monospace";
+							spacing: 4px;
+							padding: 0px;
+
+							Text {
+								text: "Headers ({{var}} in name or value)";
+								font-size: 11px;
+							}
+							ScrollView {
+								vertical-stretch: 1;
+								horizontal-stretch: 1;
+								min-height: 32px;
+								VerticalBox {
+									width: 100%;
+									horizontal-stretch: 1;
+									vertical-stretch: 0;
+									alignment: start;
+									spacing: 0px;
+									padding: 0px;
+									GridLayout {
+										width: 100%;
+										vertical-stretch: 0;
+										spacing: 4px;
+										Row {
+											Text {
+												text: "On";
+												font-size: 11px;
+												font-weight: 600;
+												vertical-alignment: top;
+												min-width: 28px;
+											}
+											Text {
+												text: "Name";
+												font-size: 11px;
+												font-weight: 600;
+												vertical-alignment: top;
+												horizontal-stretch: 1;
+											}
+											Text {
+												text: "Value";
+												font-size: 11px;
+												font-weight: 600;
+												vertical-alignment: top;
+												horizontal-stretch: 1;
+											}
+											Text {
+												text: "";
+												min-width: 28px;
+											}
+										}
+										for hkey[idx] in AppLogic.request-header-keys: Row {
+											CheckBox {
+												checked: AppLogic.request-header-enabled[idx];
+												min-width: 28px;
+												min-height: 28px;
+												toggled => {
+													AppLogic.request-header-enabled-changed(idx, self.checked);
+												}
+											}
+											CompactLineEdit {
+												font-family: AppLogic.response-body-font-family;
+												font-size: AppLogic.response-body-font-size * 1px;
+												placeholder-text: "name";
+												text: hkey;
+												horizontal-stretch: 1;
+												edited => {
+													AppLogic.request-header-key-edited(idx, self.text);
+												}
+												accepted => {
+													AppLogic.request-header-key-edited(idx, self.text);
+												}
+											}
+											CompactLineEdit {
+												font-family: AppLogic.response-body-font-family;
+												font-size: AppLogic.response-body-font-size * 1px;
+												placeholder-text: "value";
+												text: AppLogic.request-header-values[idx];
+												horizontal-stretch: 1;
+												edited => {
+													AppLogic.request-header-value-edited(idx, self.text);
+												}
+												accepted => {
+													AppLogic.request-header-value-edited(idx, self.text);
+												}
+											}
+											RectButton {
+												text: "×";
+												min-btn-height: 28px;
+												min-btn-width: 28px;
+												pad-h: 4px;
+												pad-v: 2px;
+												clicked => {
+													AppLogic.remove-request-header(idx);
+												}
+											}
+										}
+									}
+								}
+							}
+							RectButton {
+								text: "+ header";
+								clicked => {
+									AppLogic.add-request-header();
+								}
 							}
 						}
 
-						Text {
-							text: "Body";
-							font-size: 11px;
+						HorizontalSplitter {
+							panel-height <=> request-headers-panel-height;
+							min-panel-height: 100px;
+							max-panel-height: 10000px;
 						}
-						ScrollView {
+
+						VerticalBox {
 							vertical-stretch: 1;
-							min-height: 80px;
-							TextEdit {
-								text <=> AppLogic.request-body;
-								font-family: "monospace";
+							spacing: 4px;
+							padding: 0px;
+
+							Text {
+								text: "Body";
+								font-size: 11px;
+							}
+							ScrollView {
+								vertical-stretch: 1;
+								min-height: 80px;
+								TextEdit {
+									text <=> AppLogic.request-body;
+									font-family: "monospace";
+								}
 							}
 						}
 					}

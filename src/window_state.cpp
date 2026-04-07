@@ -31,6 +31,7 @@ static nlohmann::json read_json_or_default() {
 		                               {"request_panel_width_px", 420.0},
 		                               {"sidebar_collections_height_px", 220.0},
 		                               {"request_query_panel_height_px", 200.0},
+		                               {"request_headers_panel_height_px", 200.0},
 		                               {"response_headers_panel_height_px", 120.0}});
 	}
 	try {
@@ -46,6 +47,7 @@ static nlohmann::json read_json_or_default() {
 		                               {"request_panel_width_px", 420.0},
 		                               {"sidebar_collections_height_px", 220.0},
 		                               {"request_query_panel_height_px", 200.0},
+		                               {"request_headers_panel_height_px", 200.0},
 		                               {"response_headers_panel_height_px", 120.0}});
 	}
 }
@@ -100,6 +102,10 @@ float clamp_request_query_panel_height_px(float v) {
 	return std::clamp(v, 80.f, 10000.f);
 }
 
+float clamp_request_headers_panel_height_px(float v) {
+	return std::clamp(v, 100.f, 10000.f);
+}
+
 float clamp_response_headers_panel_height_px(float v) {
 	return std::clamp(v, 72.f, 10000.f);
 }
@@ -122,6 +128,8 @@ PersistedWindowState load_window_session() {
 			j.value("sidebar_collections_height_px", 220.0));
 	s.request_query_panel_height_px = clamp_request_query_panel_height_px(
 			j.value("request_query_panel_height_px", 200.0));
+	s.request_headers_panel_height_px = clamp_request_headers_panel_height_px(
+			j.value("request_headers_panel_height_px", 200.0));
 	s.response_headers_panel_height_px = clamp_response_headers_panel_height_px(
 			j.value("response_headers_panel_height_px", 120.0));
 	return s;
@@ -139,6 +147,8 @@ void save_window_session(const PersistedWindowState& state) {
 			state.sidebar_collections_height_px);
 	j["request_query_panel_height_px"] = clamp_request_query_panel_height_px(
 			state.request_query_panel_height_px);
+	j["request_headers_panel_height_px"] = clamp_request_headers_panel_height_px(
+			state.request_headers_panel_height_px);
 	j["response_headers_panel_height_px"] = clamp_response_headers_panel_height_px(
 			state.response_headers_panel_height_px);
 	write_json(j);

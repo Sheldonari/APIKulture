@@ -1,11 +1,38 @@
 #include "collections_io.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <fstream>
 #include <filesystem>
+#include <sstream>
 
 namespace fs = std::filesystem;
+
+namespace {
+
+void trim_header_line_inplace(std::string& s) {
+	auto not_space = [](unsigned char c) { return !std::isspace(c); };
+	s.erase(s.begin(), std::find_if(s.begin(), s.end(), not_space));
+	s.erase(std::find_if(s.rbegin(), s.rend(), not_space).base(), s.end());
+}
+
+/// Legacy `headers` stored as one string: one "Key: value" per line.
+void parse_legacy_headers_string(const std::string& text, std::vector<apikulture::HeaderRow>& out) {
+	std::istringstream stream(text);
+	std::string line;
+	while (std::getline(stream, line)) {
+		const size_t colon = line.find(':');
+		if (colon == std::string::npos) continue;
+		std::string key = line.substr(0, colon);
+		std::string value = line.substr(colon + 1);
+		trim_header_line_inplace(key);
+		trim_header_line_inplace(value);
+		if (!key.empty()) out.push_back(apikulture::HeaderRow{std::move(key), std::move(value), true});
+	}
+}
+
+}  // namespace
 
 namespace apikulture {
 
@@ -48,11 +75,15 @@ void to_json(nlohmann::json& j, const RequestItem& r) {
 	for (const auto& p : r.query_params) {
 		qp.push_back(nlohmann::json{{"key", p.key}, {"value", p.value}, {"enabled", p.enabled}});
 	}
+	nlohmann::json hdr = nlohmann::json::array();
+	for (const auto& h : r.request_headers) {
+		hdr.push_back(nlohmann::json{{"key", h.key}, {"value", h.value}, {"enabled", h.enabled}});
+	}
 	j = nlohmann::json{{"name", r.name},
 	                     {"method", r.method},
 	                     {"url", r.url},
 	                     {"query_params", qp},
-	                     {"headers", r.headers},
+	                     {"headers", std::move(hdr)},
 	                     {"body", r.body},
 	                     {"jsonpath", r.jsonpath},
 	                     {"last_response_status", r.last_response_status},
@@ -77,7 +108,22 @@ void from_json(const nlohmann::json& j, RequestItem& r) {
 			r.query_params.push_back(std::move(qp));
 		}
 	}
-	r.headers = j.value("headers", std::string());
+	r.request_headers.clear();
+	if (j.contains("headers")) {
+		const auto& hj = j["headers"];
+		if (hj.is_array()) {
+			for (const auto& row : hj) {
+				if (!row.is_object()) continue;
+				HeaderRow hr;
+				hr.key = row.value("key", std::string());
+				hr.value = row.value("value", std::string());
+				hr.enabled = row.value("enabled", true);
+				r.request_headers.push_back(std::move(hr));
+			}
+		} else if (hj.is_string()) {
+			parse_legacy_headers_string(hj.get<std::string>(), r.request_headers);
+		}
+	}
 	r.body = j.value("body", std::string());
 	r.jsonpath = j.value("jsonpath", std::string());
 	r.last_response_status = j.value("last_response_status", std::string());

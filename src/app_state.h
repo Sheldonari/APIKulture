@@ -57,6 +57,12 @@ public:
 	void query_param_enabled_changed(int index, bool enabled);
 	void add_query_param();
 	void remove_query_param(int index);
+
+	void request_header_key_edited(int index, slint::SharedString text);
+	void request_header_value_edited(int index, slint::SharedString text);
+	void request_header_enabled_changed(int index, bool enabled);
+	void add_request_header();
+	void remove_request_header(int index);
 	/// UI timer callback: updates live elapsed time while `loading` is true.
 	void tick_request_elapsed();
 	/// Enter in URL field: cancel if loading; else if URL changed since last import, parse `?query` into the table; then send.
@@ -85,6 +91,7 @@ private:
 	void push_selection_to_ui();
 	void restore_request_index_for_current_collection();
 	void refresh_query_param_models();
+	void refresh_request_header_models();
 	void apply_openapi_import_result(apikulture::openapi::ImportResult&& result);
 	/// If URL field differs from \ref last_url_field_sync_, parse `?query` into the table (Enter / Send).
 	void sync_url_field_to_query_table_if_changed();
@@ -117,6 +124,9 @@ private:
 	std::shared_ptr<slint::VectorModel<slint::SharedString>> query_param_keys_model_;
 	std::shared_ptr<slint::VectorModel<slint::SharedString>> query_param_values_model_;
 	std::shared_ptr<slint::VectorModel<bool>> query_param_enabled_model_;
+	std::shared_ptr<slint::VectorModel<slint::SharedString>> request_header_keys_model_;
+	std::shared_ptr<slint::VectorModel<slint::SharedString>> request_header_values_model_;
+	std::shared_ptr<slint::VectorModel<bool>> request_header_enabled_model_;
 	/// Monotonic start time for the in-flight HTTP request (UI-thread only).
 	std::optional<std::chrono::steady_clock::time_point> request_elapsed_start_;
 	/// Collection index to remove after Slint delete confirmation; -1 when not applicable.

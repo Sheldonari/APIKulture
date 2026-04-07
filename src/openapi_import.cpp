@@ -343,11 +343,9 @@ ImportResult import_from_json_text(std::string raw, std::optional<std::string> s
 					header_lines.emplace_back(name, param_example_value(p));
 				}
 			}
-			std::ostringstream hdr;
 			for (const auto& h : header_lines) {
-				hdr << h.first << ": " << h.second << "\n";
+				item.request_headers.push_back(apikulture::HeaderRow{h.first, h.second, true});
 			}
-			item.headers = hdr.str();
 
 			if (op.contains("requestBody")) {
 				item.body = build_body_from_request_body(root, op["requestBody"]);

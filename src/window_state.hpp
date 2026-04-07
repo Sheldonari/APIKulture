@@ -32,6 +32,8 @@ struct PersistedWindowState {
 	float sidebar_collections_height_px = 220.f;
 	/// Horizontal splitter between query-parameters block and headers/body in the request column.
 	float request_query_panel_height_px = 200.f;
+	/// Horizontal splitter between request headers block and body in the request column.
+	float request_headers_panel_height_px = 200.f;
 	/// Horizontal splitter between response headers block and JSONPath/body.
 	float response_headers_panel_height_px = 120.f;
 };
