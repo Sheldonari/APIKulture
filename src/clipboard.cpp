@@ -12,6 +12,12 @@
 
 namespace apikulture::clipboard {
 
+#if defined(__linux__) && defined(APIKULTURE_HAVE_X11_CLIPBOARD)
+namespace detail {
+bool set_utf8_x11(std::string_view text);
+}
+#endif
+
 namespace {
 
 std::optional<std::string> read_pipe_stdout(const char* cmd) {
@@ -61,11 +67,10 @@ std::optional<std::string> get_utf8() {
 #elif defined(__APPLE__)
 	if (auto r = read_pipe_stdout("pbpaste")) return r;
 	return std::nullopt;
+#elif defined(__linux__)
+	(void)0;
+	return std::nullopt;
 #else
-	if (auto r = read_pipe_stdout("wl-paste -n -t text/plain 2>/dev/null")) return r;
-	if (auto r = read_pipe_stdout("wl-paste -n 2>/dev/null")) return r;
-	if (auto r = read_pipe_stdout("xclip -selection clipboard -o 2>/dev/null")) return r;
-	if (auto r = read_pipe_stdout("xsel --clipboard --output 2>/dev/null")) return r;
 	return std::nullopt;
 #endif
 }
@@ -107,17 +112,15 @@ bool set_utf8(std::string_view text) {
 	const size_t n = std::fwrite(text.data(), 1, text.size(), p);
 	const int st = ::pclose(p);
 	return st == 0 && n == text.size();
+#elif defined(__linux__)
+#	if defined(APIKULTURE_HAVE_X11_CLIPBOARD)
+	return apikulture::clipboard::detail::set_utf8_x11(text);
+#	else
+	(void)text;
+	return false;
+#	endif
 #else
-	auto write_pipe = [&](const char* cmd) -> bool {
-		FILE* p = ::popen(cmd, "w");
-		if (!p) return false;
-		const size_t n = std::fwrite(text.data(), 1, text.size(), p);
-		const int st = ::pclose(p);
-		return st == 0 && n == text.size();
-	};
-	if (write_pipe("wl-copy")) return true;
-	if (write_pipe("xclip -selection clipboard")) return true;
-	if (write_pipe("xsel --clipboard --input")) return true;
+	(void)text;
 	return false;
 #endif
 }

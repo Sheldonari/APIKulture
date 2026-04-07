@@ -170,6 +170,7 @@ int main(int argc, char** argv) {
 	logic.on_send_request([&state]() { state.send_request(); });
 	logic.on_cancel_request([&state]() { state.cancel_request(); });
 	logic.on_request_url_accepted([&state]() { state.request_url_accepted(); });
+	logic.on_copy_response_body([&state]() { state.copy_response_body(); });
 	logic.on_select_collection([&state](int i) { state.select_collection(i); });
 	logic.on_select_request([&state](int i) { state.select_request(i); });
 	logic.on_new_collection([&state]() { state.new_collection(); });

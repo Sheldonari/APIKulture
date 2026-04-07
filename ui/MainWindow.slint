@@ -54,6 +54,49 @@ component RectButton inherits Rectangle {
 	}
 }
 
+/// Toolbar-sized button that shows an icon (same visual language as `RectButton`).
+component IconRectButton inherits Rectangle {
+	in property <image> icon;
+	in property <length> min-btn-size: 28px;
+	callback clicked;
+
+	min-width: min-btn-size;
+	min-height: min-btn-size;
+	max-height: min-btn-size;
+	border-width: 1px;
+	border-color: Palette.border;
+	border-radius: 3px;
+	clip: true;
+	horizontal-stretch: 0;
+	vertical-stretch: 0;
+
+	background: Palette.alternate-background;
+
+	states [
+		hover when ta.has-hover: {
+			background: Palette.control-background;
+		}
+	]
+
+	Image {
+		source: root.icon;
+		width: 18px;
+		height: 18px;
+		x: (parent.width - self.width) / 2;
+		y: (parent.height - self.height) / 2;
+		colorize: Palette.control-foreground;
+	}
+
+	ta := TouchArea {
+		width: 100%;
+		height: 100%;
+		mouse-cursor: pointer;
+		clicked => {
+			root.clicked();
+		}
+	}
+}
+
 /// Single-line field shorter than Material LineEdit default (~56px).
 component CompactLineEdit inherits LineEdit {
 	min-height: 28px;
@@ -338,6 +381,7 @@ export global AppLogic {
 	callback send-request();
 	callback cancel-request();
 	callback request-url-accepted();
+	callback copy-response-body();
 	callback select-collection(int);
 	callback select-request(int);
 	callback new-collection();
@@ -1175,9 +1219,23 @@ export component MainWindow inherits Window {
 								}
 							}
 
-							Text {
-								text: "Response body";
-								font-size: 11px;
+							HorizontalBox {
+								padding: 0px;
+								spacing: 6px;
+								vertical-stretch: 0;
+								Text {
+									text: "Response body";
+									font-size: 11px;
+									vertical-alignment: center;
+									horizontal-stretch: 1;
+								}
+								IconRectButton {
+									vertical-stretch: 0;
+									icon: @image-url("icons/copy.svg");
+									clicked => {
+										AppLogic.copy-response-body();
+									}
+								}
 							}
 							ResponseBodyViewer {
 								lines: AppLogic.response-body-lines;

@@ -92,6 +92,15 @@ endif()
 slint_target_sources(apikulture ui/MainWindow.slint)
 target_link_libraries(apikulture PRIVATE Slint::Slint)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	find_package(X11 QUIET)
+	if(X11_FOUND)
+		target_sources(apikulture PRIVATE src/clipboard_linux_x11.cpp)
+		target_link_libraries(apikulture PRIVATE X11::X11)
+		target_compile_definitions(apikulture PRIVATE APIKULTURE_HAVE_X11_CLIPBOARD=1)
+	endif()
+endif()
+
 if(WIN32)
 	add_custom_command(TARGET apikulture POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different

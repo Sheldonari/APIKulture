@@ -61,6 +61,7 @@ public:
 	void tick_request_elapsed();
 	/// Enter in URL field: cancel if loading; else if URL changed since last import, parse `?query` into the table; then send.
 	void request_url_accepted();
+	void copy_response_body();
 
 	/// Call after MainWindow is created to load data into UI models.
 	void init_collections_ui();

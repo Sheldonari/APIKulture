@@ -1,4 +1,5 @@
 #include "app_state.h"
+#include "clipboard.hpp"
 #include "environment.hpp"
 #include "file_dialog.hpp"
 #include "http_client.h"
@@ -810,6 +811,12 @@ void AppState::request_url_accepted() {
 	commit_form_to_current_item();
 	sync_url_field_to_query_table_if_changed();
 	send_request();
+}
+
+void AppState::copy_response_body() {
+	auto& g = ui_->global<AppLogic>();
+	const std::string body = to_std_string(g.get_response_body());
+	(void)apikulture::clipboard::set_utf8(body);
 }
 
 void AppState::worker_run() {
