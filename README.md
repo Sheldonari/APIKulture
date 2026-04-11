@@ -106,4 +106,4 @@ While the app is running, the theme **updates automatically** when you follow th
 
 ## License
 
-Use and modify as you like.
+[MIT](LICENSE) — Copyright (c) 2026 Sheldonari
