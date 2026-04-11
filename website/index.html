@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>APIkulture — REST API client for Linux, Windows &amp; macOS</title>
+	<meta name="description" content="A fast, native REST API tester with collections, environments, OpenAPI import, and HTTPS. Built with C++ and Slint.">
+	<link rel="canonical" href="https://www.apikulture.com/">
+	<meta property="og:title" content="APIkulture — REST API client">
+	<meta property="og:description" content="Collections, environments, OpenAPI import, and HTTPS. Native app for Linux, Windows, and macOS.">
+	<meta property="og:url" content="https://www.apikulture.com/">
+	<meta property="og:type" content="website">
+	<meta property="og:image" content="https://www.apikulture.com/assets/apikulture.svg">
+	<meta name="twitter:card" content="summary_large_image">
+	<link rel="icon" href="assets/apikulture.svg" type="image/svg+xml">
+	<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+	<a class="skip-link" href="#main">Skip to content</a>
+
+	<header class="site-header">
+		<div class="wrap header-inner">
+			<a class="brand" href="#">
+				<img src="assets/apikulture.svg" width="40" height="40" alt="">
+				<span>APIkulture</span>
+			</a>
+			<nav aria-label="Primary">
+				<ul>
+					<li><a href="#features">Features</a></li>
+					<li><a href="#build">Build</a></li>
+					<li><a href="#footer-links">Links</a></li>
+				</ul>
+			</nav>
+		</div>
+	</header>
+
+	<main id="main">
+		<section class="hero">
+			<div class="wrap hero-grid">
+				<div class="hero-copy">
+					<h1>Your APIs, one hive</h1>
+					<p class="lede">
+						A native REST client for sending requests, organizing collections, and importing OpenAPI—without a browser tab farm.
+					</p>
+					<div class="hero-actions">
+						<a class="btn btn-primary" href="#build">Build from source</a>
+						<a class="btn btn-secondary" href="https://codeberg.org/Sheldonari/APIKulture">View on Codeberg</a>
+					</div>
+					<p class="hero-meta">
+						Open source · Windows, Linux, macOS · Slint UI · C++17
+					</p>
+				</div>
+				<div class="hero-art" aria-hidden="true">
+					<figure>
+						<img src="assets/apikulture.svg" width="220" height="220" alt="">
+						<figcaption>Worker bee, meet your JSON hive.</figcaption>
+					</figure>
+				</div>
+			</div>
+		</section>
+
+		<section id="features" class="section-alt" aria-labelledby="features-heading">
+			<div class="wrap">
+				<header class="section-head">
+					<h2 id="features-heading">Built for real API work</h2>
+					<p>Sidebar collections, saved environments, and a focused editor—similar in spirit to Yaak or Insomnia, shipped as a small native binary.</p>
+				</header>
+				<div class="feature-grid">
+					<article class="card">
+						<h3>Collections &amp; requests</h3>
+						<p>Multiple named collections, each with saved requests. Pick a row to load method, URL, headers, and body into the editor.</p>
+					</article>
+					<article class="card">
+						<h3>Environments &amp; persistence</h3>
+						<p>Per-collection environments with base URL and variables. Everything is stored as JSON under your user config directory—auto-saved on exit, with Save all when you need it.</p>
+					</article>
+					<article class="card">
+						<h3>OpenAPI 3.x import</h3>
+						<p>Import JSON specs into a new collection—one request per operation. Path <code>{id}</code> placeholders become <code>{{id}}</code> for variables. Fetch from a URL or load a local file.</p>
+					</article>
+					<article class="card">
+						<h3>HTTP &amp; HTTPS</h3>
+						<p>GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS. Custom headers, raw JSON body, response status and headers, pretty-printed JSON bodies.</p>
+					</article>
+					<article class="card">
+						<h3>Non-blocking UI</h3>
+						<p>Send and cancel on a worker thread so the interface stays responsive while requests run.</p>
+					</article>
+					<article class="card">
+						<h3>Light &amp; dark</h3>
+						<p>Material-style theme with system-aware light/dark support and optional overrides via environment variables or CLI flags.</p>
+					</article>
+				</div>
+				<div class="platforms" aria-label="Platforms">
+					<span>Windows</span>
+					<span>Linux</span>
+					<span>macOS</span>
+				</div>
+			</div>
+		</section>
+
+		<section id="build" aria-labelledby="build-heading">
+			<div class="wrap">
+				<header class="section-head">
+					<h2 id="build-heading">Build</h2>
+					<p>APIkulture uses CMake, Slint, and optional OpenSSL for HTTPS. See the <a href="https://codeberg.org/Sheldonari/APIKulture/src/branch/main/README.md">repository README</a> for full prerequisites and platform notes.</p>
+				</header>
+				<div class="build-box">
+					<header>Quick start</header>
+					<pre><code>mkdir build &amp;&amp; cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build .
+./apikulture</code></pre>
+				</div>
+				<p class="build-note">
+					Need the Slint C++ SDK? Set <code>SLINT_DIR</code> to your extracted SDK, or let CMake fetch Slint (Rust toolchain required). On Linux, you may need <code>LD_LIBRARY_PATH</code> so <code>libslint_cpp.so</code> is found—details are in the <a href="https://github.com/slint-ui/slint/releases">Slint releases</a> and <a href="https://codeberg.org/Sheldonari/APIKulture/src/branch/main/README.md">project README</a>.
+				</p>
+			</div>
+		</section>
+	</main>
+
+	<footer class="site-footer" id="footer-links">
+		<div class="wrap footer-grid">
+			<div>
+				<p><strong>APIkulture</strong> — <a href="https://codeberg.org/Sheldonari/APIKulture/src/branch/main/LICENSE">MIT License</a>.</p>
+				<p style="margin-top: 0.5rem">UI built with <a href="https://slint.dev/">Slint</a>. Not affiliated with Yaak, Insomnia, or Postman.</p>
+			</div>
+			<div class="footer-links">
+				<a href="https://www.apikulture.com/">www.apikulture.com</a>
+				<a href="https://codeberg.org/Sheldonari/APIKulture">Source on Codeberg</a>
+			</div>
+		</div>
+	</footer>
+</body>
+</html>
