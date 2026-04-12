@@ -56,6 +56,8 @@ APIkulture is normally **linked dynamically** against Slint. The system must the
 
 This applies when you use the **pre-built Slint C++ SDK** or a **default shared build** of Slint (including typical **FetchContent** builds). **Static** Slint builds embed the runtime instead; they are not covered here.
 
+**`cmake --install` on Linux** — The project sets **`INSTALL_RPATH`** to `$ORIGIN/../lib` and installs **`libslint_cpp.so`** into `<prefix>/lib` next to a normal layout (`bin/apikulture`, `lib/libslint_cpp.so`), so you do not need **`LD_LIBRARY_PATH`** after a prefix install. Re-run CMake from a clean build directory if install rules were added after your first configure.
+
 #### Linux — Ubuntu
 
 Ubuntu’s default apt repositories do **not** ship `libslint_cpp` as a standalone package. Use one of these:

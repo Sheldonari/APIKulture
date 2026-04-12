@@ -43,7 +43,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
-# jsoncons (JSONPath via jsoncons_ext)
+# jsoncons (JSONPath via jsoncons_ext) — tests off: default ON pulls in CTest, which needs a
+# complete CMake install (some ~/.local CMake trees lack Templates/CTestScript.cmake.in).
+set(JSONCONS_BUILD_TESTS OFF CACHE BOOL "jsoncons test suite" FORCE)
 FetchContent_Declare(
 		jsoncons
 		GIT_REPOSITORY https://github.com/danielaparker/jsoncons.git
@@ -92,7 +94,22 @@ endif()
 slint_target_sources(apikulture ui/MainWindow.slint)
 target_link_libraries(apikulture PRIVATE Slint::Slint)
 
+# Linux: Slint is usually linked to libslint_cpp.so; `make install` must ship that library and
+# set RPATH so the installed binary finds it under prefix (without LD_LIBRARY_PATH).
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	set(_apikulture_install_libdir "${CMAKE_INSTALL_LIBDIR}")
+	if(_apikulture_install_libdir MATCHES "^/")
+		set(_apikulture_rpath "${_apikulture_install_libdir}")
+	else()
+		set(_apikulture_rpath "\$ORIGIN/../${_apikulture_install_libdir}")
+	endif()
+	set_target_properties(apikulture PROPERTIES INSTALL_RPATH "${_apikulture_rpath}")
+	if(TARGET slint_cpp-shared)
+		set_target_properties(apikulture PROPERTIES
+			BUILD_RPATH_USE_ORIGIN ON
+			BUILD_RPATH "$<TARGET_FILE_DIR:slint_cpp-shared>"
+		)
+	endif()
 	find_package(X11 QUIET)
 	if(X11_FOUND)
 		target_sources(apikulture PRIVATE src/clipboard_linux_x11.cpp)
@@ -113,6 +130,16 @@ endif()
 # Freedesktop icon + launcher (GNOME dock / app menu resolve Icon= by name from hicolor theme)
 if(UNIX AND NOT APPLE)
 	install(TARGETS apikulture RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+	if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+		if(TARGET slint_cpp-shared)
+			install(FILES $<TARGET_FILE:slint_cpp-shared> DESTINATION ${CMAKE_INSTALL_LIBDIR})
+		elseif(DEFINED ENV{SLINT_DIR} AND EXISTS "$ENV{SLINT_DIR}/lib")
+			file(GLOB _apikulture_slint_so LIST_DIRECTORIES false "$ENV{SLINT_DIR}/lib/libslint_cpp.so*")
+			if(_apikulture_slint_so)
+				install(FILES ${_apikulture_slint_so} DESTINATION ${CMAKE_INSTALL_LIBDIR})
+			endif()
+		endif()
+	endif()
 	install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/data/apikulture.desktop"
 		DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 	install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/ui/icons/apikulture.svg"
