@@ -313,6 +313,27 @@ void AppState::sync_url_field_to_query_table_if_changed() {
 	}
 }
 
+void AppState::sync_request_headers_from_ui_models_into_item() {
+	apikulture::RequestItem* item = mutable_current_request_item();
+	if (!item || !request_header_keys_model_ || !request_header_values_model_ || !request_header_enabled_model_) return;
+	const size_t nk = request_header_keys_model_->row_count();
+	const size_t nv = request_header_values_model_->row_count();
+	const size_t ne = request_header_enabled_model_->row_count();
+	const size_t n = std::min({nk, nv, ne});
+	item->request_headers.clear();
+	item->request_headers.reserve(n);
+	for (size_t i = 0; i < n; ++i) {
+		apikulture::HeaderRow row;
+		if (auto k = request_header_keys_model_->row_data(i)) row.key = to_std_string(*k);
+		if (auto v = request_header_values_model_->row_data(i)) row.value = to_std_string(*v);
+		if (auto e = request_header_enabled_model_->row_data(i)) row.enabled = *e;
+		item->request_headers.push_back(std::move(row));
+	}
+	if (item->request_headers.empty()) {
+		item->request_headers.push_back({});
+	}
+}
+
 void AppState::commit_form_to_current_item() {
 	commit_environment_fields_to_active();
 	if (workspace_.collections.empty()) return;
@@ -681,6 +702,7 @@ void AppState::commit_request_name() {
 void AppState::send_request() {
 	if (worker_busy_) return;
 	commit_form_to_current_item();
+	sync_request_headers_from_ui_models_into_item();
 	sync_url_field_to_query_table_if_changed();
 
 	auto& g = ui_->global<AppLogic>();

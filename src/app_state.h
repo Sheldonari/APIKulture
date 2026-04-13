@@ -92,6 +92,8 @@ private:
 	void restore_request_index_for_current_collection();
 	void refresh_query_param_models();
 	void refresh_request_header_models();
+	/// Copy header rows from Slint models into the current request (Send must see latest LineEdit text).
+	void sync_request_headers_from_ui_models_into_item();
 	void apply_openapi_import_result(apikulture::openapi::ImportResult&& result);
 	/// If URL field differs from \ref last_url_field_sync_, parse `?query` into the table (Enter / Send).
 	void sync_url_field_to_query_table_if_changed();

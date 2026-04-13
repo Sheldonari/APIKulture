@@ -1,5 +1,6 @@
 #include "http_client.h"
 #include "httplib.h"
+#include <cctype>
 #include <sstream>
 #include <algorithm>
 
@@ -11,6 +12,31 @@ std::string trim(const std::string& s) {
 	auto end = s.find_last_not_of(" \t\r\n");
 	return s.substr(start, end == std::string::npos ? std::string::npos : end - start + 1);
 }
+
+namespace {
+
+bool headers_have_content_type(const std::vector<std::pair<std::string, std::string>>& headers) {
+	for (const auto& h : headers) {
+		std::string k = trim(h.first);
+		for (auto& c : k) {
+			c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+		}
+		if (k == "content-type") return true;
+	}
+	return false;
+}
+
+// cpp-httplib always calls req.set_header("Content-Type", content_type) when content_type is non-empty,
+// which overwrites any Content-Type the user supplied in `headers`. Pass "" so only user headers apply.
+std::string httplib_content_type_arg(const std::vector<std::pair<std::string, std::string>>& headers,
+		const std::string& body,
+		const char* default_for_non_empty_body) {
+	if (headers_have_content_type(headers)) return {};
+	if (body.empty()) return {};
+	return std::string(default_for_non_empty_body);
+}
+
+}  // namespace
 
 void parse_url(const std::string& url, std::string& scheme, std::string& host, int& port, std::string& path) {
 	scheme = "https";
@@ -97,15 +123,18 @@ HttpResponse execute(const std::string& method,
 		client.set_read_timeout(30, 0);
 		client.set_write_timeout(30, 0);
 
+		const std::string json_ct = httplib_content_type_arg(headers, body, "application/json");
+		const std::string octet_ct = httplib_content_type_arg(headers, body, "application/octet-stream");
+
 		auto do_req = [&]() -> decltype(client.Get(path, req_headers)) {
 			if (method_upper == "GET") return client.Get(path, req_headers);
-			if (method_upper == "POST") return client.Post(path, req_headers, body, "application/json");
-			if (method_upper == "PUT") return client.Put(path, req_headers, body, "application/json");
-			if (method_upper == "PATCH") return client.Patch(path, req_headers, body, "application/json");
+			if (method_upper == "POST") return client.Post(path, req_headers, body, json_ct);
+			if (method_upper == "PUT") return client.Put(path, req_headers, body, json_ct);
+			if (method_upper == "PATCH") return client.Patch(path, req_headers, body, json_ct);
 			if (method_upper == "DELETE") return client.Delete(path, req_headers);
 			if (method_upper == "HEAD") return client.Head(path, req_headers);
 			if (method_upper == "OPTIONS") return client.Options(path, req_headers);
-			return client.Post(path, req_headers, body, "application/octet-stream");
+			return client.Post(path, req_headers, body, octet_ct);
 		};
 		auto res = do_req();
 

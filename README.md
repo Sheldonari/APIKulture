@@ -9,7 +9,7 @@ A multiplatform REST API tester (Yaak/Insomnia-style) built with C++ and Slint. 
 - Actions: **+ Collection**, **New** / **Dup** / **Del** request, **Save all**, **Import OpenAPI**
 - **OpenAPI 3.x (JSON)**: import a spec into a new collection (one saved request per operation). Path parameters `{id}` become `{{id}}` for your environment variables. Query/header parameters and JSON `requestBody` examples are filled when present. The **Default** environment’s **Base URL** is set from the first `servers[0].url` (relative URLs like `/api/v3` are resolved against the document URL when you import via **Fetch**). Import from a **local file** (button or `--import-openapi=PATH`) or from a **URL** (sidebar field + **Fetch**, or `--import-openapi-url=https://…`). URLs without `http://` / `https://` get `https://` prepended. YAML specs are not read directly—convert with e.g. `yq -o=json openapi.yaml > openapi.json`. **HTTPS** needs OpenSSL when building (same as sending HTTPS requests).
 - HTTP methods: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
-- URL and custom headers (one per line: `Key: value`)
+- URL and custom headers (**Name** / **Value** columns; each row must be **checked** to be sent). Example for DeepL: name `Authorization`, value `DeepL-Auth-Key YOUR_KEY` (same as curl `--header`). Use `{{var}}` in header key/value for environment variables.
 - Request body (raw/JSON)
 - Response: status, headers, body with JSON pretty-print
 - Send / Cancel; non-blocking UI (requests run on a worker thread)

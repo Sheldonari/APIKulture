@@ -1061,7 +1061,7 @@ export component MainWindow inherits Window {
 												min-width: 28px;
 											}
 										}
-										for hkey[idx] in AppLogic.request-header-keys: Row {
+										for _[idx] in AppLogic.request-header-keys: Row {
 											CheckBox {
 												checked: AppLogic.request-header-enabled[idx];
 												min-width: 28px;
@@ -1074,7 +1074,8 @@ export component MainWindow inherits Window {
 												font-family: AppLogic.response-body-font-family;
 												font-size: AppLogic.response-body-font-size * 1px;
 												placeholder-text: "name";
-												text: hkey;
+												// Same indexed binding as values — loop alias alone can fail to sync edits in some Slint versions.
+												text: AppLogic.request-header-keys[idx];
 												horizontal-stretch: 1;
 												edited => {
 													AppLogic.request-header-key-edited(idx, self.text);
