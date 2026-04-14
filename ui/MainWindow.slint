@@ -507,12 +507,20 @@ export component MainWindow inherits Window {
 
 	// Keyboard zoom is scoped to the Response column only (see `response-key-scope`) so the
 	// request Body TextEdit is not under a window-wide FocusScope (which still breaks focus).
-	HorizontalBox {
-		// std-widgets HorizontalBox defaults to StyleMetrics.layout-padding (~16px) on all sides.
-		spacing: 0;
-		padding: 0px;
+	/// Stack main UI + modal in one layer so `width/height: 100%` on the dialog refers to the
+	/// full client area. As a third `Window` child, the overlay’s layout slot was ~0×0 (invisible).
+	Rectangle {
+		width: 100%;
+		height: 100%;
+		vertical-stretch: 1;
+		horizontal-stretch: 1;
 
-		// --- Left sidebar: collections + requests (Palette follows system light/dark) ---
+		HorizontalBox {
+			// std-widgets HorizontalBox defaults to StyleMetrics.layout-padding (~16px) on all sides.
+			spacing: 0;
+			padding: 0px;
+
+			// --- Left sidebar: collections + requests (Palette follows system light/dark) ---
 		Rectangle {
 			width: collection-panel-width;
 			vertical-stretch: 1;
@@ -1420,6 +1428,8 @@ export component MainWindow inherits Window {
 		}
 		}
 
+		}
+
 		if AppLogic.collection-delete-dialog-open: Rectangle {
 			width: 100%;
 			height: 100%;
@@ -1438,7 +1448,7 @@ export component MainWindow inherits Window {
 				x: (parent.width - self.width) / 2;
 				y: (parent.height - self.height) / 2;
 				width: min(parent.width - 48px, 420px);
-				height: min(parent.height - 464px, 240px);
+				height: min(parent.height - 48px, 240px);
 				background: Palette.control-background.mix(Palette.background, 0.015);
 				border-width: 1px;
 				border-color: Palette.border;
