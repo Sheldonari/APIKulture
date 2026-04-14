@@ -31,7 +31,7 @@ static nlohmann::json read_json_or_default() {
 		                               {"request_panel_width_px", 420.0},
 		                               {"sidebar_collections_height_px", 220.0},
 		                               {"request_query_panel_height_px", 200.0},
-		                               {"request_headers_panel_height_px", 200.0},
+		                               {"request_headers_panel_height_px", 140.0},
 		                               {"response_headers_panel_height_px", 120.0}});
 	}
 	try {
@@ -47,7 +47,7 @@ static nlohmann::json read_json_or_default() {
 		                               {"request_panel_width_px", 420.0},
 		                               {"sidebar_collections_height_px", 220.0},
 		                               {"request_query_panel_height_px", 200.0},
-		                               {"request_headers_panel_height_px", 200.0},
+		                               {"request_headers_panel_height_px", 140.0},
 		                               {"response_headers_panel_height_px", 120.0}});
 	}
 }
@@ -129,9 +129,18 @@ PersistedWindowState load_window_session() {
 	s.request_query_panel_height_px = clamp_request_query_panel_height_px(
 			j.value("request_query_panel_height_px", 200.0));
 	s.request_headers_panel_height_px = clamp_request_headers_panel_height_px(
-			j.value("request_headers_panel_height_px", 200.0));
+			j.value("request_headers_panel_height_px", 140.0));
 	s.response_headers_panel_height_px = clamp_response_headers_panel_height_px(
 			j.value("response_headers_panel_height_px", 120.0));
+
+	// Old sessions could save very large query + headers heights; on a short window the Body
+	// region (below both splitters) collapses to zero. Keep a conservative combined cap.
+	if (s.request_query_panel_height_px + s.request_headers_panel_height_px > 420.f) {
+		s.request_query_panel_height_px =
+				std::min(s.request_query_panel_height_px, 220.f);
+		s.request_headers_panel_height_px =
+				std::min(s.request_headers_panel_height_px, 180.f);
+	}
 	return s;
 }
 

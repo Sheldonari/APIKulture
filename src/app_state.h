@@ -51,6 +51,7 @@ public:
 	void delete_environment();
 	void commit_environment_name();
 	void commit_environment_variables();
+	void commit_request_body();
 
 	void query_param_key_edited(int index, slint::SharedString text);
 	void query_param_value_edited(int index, slint::SharedString text);

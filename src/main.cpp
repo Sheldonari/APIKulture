@@ -190,6 +190,7 @@ int main(int argc, char** argv) {
 	logic.on_delete_environment([&state]() { state.delete_environment(); });
 	logic.on_commit_environment_name([&state]() { state.commit_environment_name(); });
 	logic.on_commit_environment_variables([&state]() { state.commit_environment_variables(); });
+	logic.on_request_body_edited([&state]() { state.commit_request_body(); });
 	logic.on_query_param_key_edited([&state](int idx, slint::SharedString text) {
 		state.query_param_key_edited(idx, std::move(text));
 	});

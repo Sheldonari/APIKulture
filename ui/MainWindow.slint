@@ -397,6 +397,7 @@ export global AppLogic {
 	callback delete-environment();
 	callback commit-environment-name();
 	callback commit-environment-variables();
+	callback request-body-edited();
 	callback query-param-key-edited(int, string);
 	callback query-param-value-edited(int, string);
 	callback query-param-enabled-changed(int, bool);
@@ -479,9 +480,10 @@ export component MainWindow inherits Window {
 	in-out property <length> request-panel-width: 420px;
 	in-out property <length> sidebar-collections-height: 220px;
 	/// Height of the query-parameters block (label + list + “+ param”) above the horizontal splitter.
-	in-out property <length> request-query-panel-height: 400px;
+	/// Default must leave room for headers + body on short windows (min-height 640px); drag splitters to expand.
+	in-out property <length> request-query-panel-height: 200px;
 	/// Height of the request headers block (label + grid + “+ header”) above the splitter before the body.
-	in-out property <length> request-headers-panel-height: 200px;
+	in-out property <length> request-headers-panel-height: 140px;
 	/// Height of the response headers block (label + scroll area) above the horizontal splitter.
 	in-out property <length> response-headers-panel-height: 120px;
 
@@ -493,42 +495,9 @@ export component MainWindow inherits Window {
 		}
 	}
 
-	key-scope := FocusScope {
-		width: 100%;
-		height: 100%;
-
-		capture-key-pressed(event) => {
-			if (event.modifiers.control) {
-				if (event.text == "-") {
-					AppLogic.adjust-response-font-size(-1);
-					return accept;
-				}
-				if (event.text == "+" || event.text == "=") {
-					AppLogic.adjust-response-font-size(1);
-					return accept;
-				}
-			}
-			reject
-		}
-
-		wheel-scope := TouchArea {
-			width: 100%;
-			height: 100%;
-			scroll-event(event) => {
-				if (event.modifiers.control) {
-					if (event.delta-y < 0) {
-						AppLogic.adjust-response-font-size(1);
-						return accept;
-					}
-					if (event.delta-y > 0) {
-						AppLogic.adjust-response-font-size(-1);
-						return accept;
-					}
-				}
-				reject
-			}
-
-			HorizontalBox {
+	// Keyboard zoom is scoped to the Response column only (see `response-key-scope`) so the
+	// request Body TextEdit is not under a window-wide FocusScope (which still breaks focus).
+	HorizontalBox {
 		// std-widgets HorizontalBox defaults to StyleMetrics.layout-padding (~16px) on all sides.
 		spacing: 0;
 		padding: 0px;
@@ -1009,9 +978,35 @@ export component MainWindow inherits Window {
 						spacing: 4px;
 						padding: 0px;
 
+						// Body is above headers so it stays visible: with query + headers first, the body
+						// sat below the fold or got zero height when vertical space was tight.
 						VerticalBox {
-							height: request-headers-panel-height;
 							vertical-stretch: 0;
+							height: 200px;
+							spacing: 4px;
+							padding: 0px;
+
+							Text {
+								text: "Body";
+								font-size: 11px;
+							}
+							TextEdit {
+								horizontal-stretch: 1;
+								height: 168px;
+								text <=> AppLogic.request-body;
+								wrap: word-wrap;
+								font-size: 12px;
+								font-family: "monospace";
+								placeholder-text: "Body for POST, PUT, PATCH (e.g. JSON)";
+								edited => {
+									AppLogic.request-body-edited();
+								}
+							}
+						}
+
+						VerticalBox {
+							vertical-stretch: 1;
+							min-height: request-headers-panel-height;
 							spacing: 4px;
 							padding: 0px;
 
@@ -1118,31 +1113,6 @@ export component MainWindow inherits Window {
 								}
 							}
 						}
-
-						HorizontalSplitter {
-							panel-height <=> request-headers-panel-height;
-							min-panel-height: 100px;
-							max-panel-height: 10000px;
-						}
-
-						VerticalBox {
-							vertical-stretch: 1;
-							spacing: 4px;
-							padding: 0px;
-
-							Text {
-								text: "Body";
-								font-size: 11px;
-							}
-							ScrollView {
-								vertical-stretch: 1;
-								min-height: 80px;
-								TextEdit {
-									text <=> AppLogic.request-body;
-									font-family: "monospace";
-								}
-							}
-						}
 					}
 				}
 
@@ -1152,23 +1122,42 @@ export component MainWindow inherits Window {
 					max-panel-width: 10000px;
 				}
 
-				VerticalBox {
-					padding: 0px;
-					spacing: 4px;
+				response-key-scope := FocusScope {
 					horizontal-stretch: 1;
 					min-width: 200px;
 					vertical-stretch: 1;
-
-					HorizontalBox {
-						padding: 0px;
-						spacing: 6px;
-						Text {
-							text: "Response";
-							font-size: 14px;
-							font-weight: 700;
-							vertical-alignment: center;
-							horizontal-stretch: 1;
+					focus-on-click: false;
+					capture-key-pressed(event) => {
+						if (event.modifiers.control) {
+							if (event.text == "-") {
+								AppLogic.adjust-response-font-size(-1);
+								return accept;
+							}
+							if (event.text == "+" || event.text == "=") {
+								AppLogic.adjust-response-font-size(1);
+								return accept;
+							}
 						}
+						reject
+					}
+
+					VerticalBox {
+						padding: 0px;
+						spacing: 4px;
+						horizontal-stretch: 1;
+						min-width: 200px;
+						vertical-stretch: 1;
+
+						HorizontalBox {
+							padding: 0px;
+							spacing: 6px;
+							Text {
+								text: "Response";
+								font-size: 14px;
+								font-weight: 700;
+								vertical-alignment: center;
+								horizontal-stretch: 1;
+							}
 						Rectangle {
 							width: 40px;
 							height: 28px;
@@ -1356,18 +1345,34 @@ export component MainWindow inherits Window {
 									}
 								}
 							}
-							ResponseBodyViewer {
-								lines: AppLogic.response-body-lines;
-								font-family: AppLogic.response-body-font-family;
-								font-size: AppLogic.response-body-font-size * 1px;
+							response-body-wheel-scope := TouchArea {
 								vertical-stretch: 1;
 								min-height: 80px;
+								scroll-event(event) => {
+									if (event.modifiers.control) {
+										if (event.delta-y < 0) {
+											AppLogic.adjust-response-font-size(1);
+											return accept;
+										}
+										if (event.delta-y > 0) {
+											AppLogic.adjust-response-font-size(-1);
+											return accept;
+										}
+									}
+									reject
+								}
+								ResponseBodyViewer {
+									lines: AppLogic.response-body-lines;
+									font-family: AppLogic.response-body-font-family;
+									font-size: AppLogic.response-body-font-size * 1px;
+									vertical-stretch: 1;
+									min-height: 80px;
+								}
 							}
 						}
 					}
 				}
 			}
-		}
 		}
 		}
 

@@ -334,6 +334,13 @@ void AppState::sync_request_headers_from_ui_models_into_item() {
 	}
 }
 
+void AppState::commit_request_body() {
+	apikulture::RequestItem* item = mutable_current_request_item();
+	if (!item) return;
+	auto& g = ui_->global<AppLogic>();
+	item->body = to_std_string(g.get_request_body());
+}
+
 void AppState::commit_form_to_current_item() {
 	commit_environment_fields_to_active();
 	if (workspace_.collections.empty()) return;
@@ -346,7 +353,7 @@ void AppState::commit_form_to_current_item() {
 	auto& item = col.items[static_cast<size_t>(request_index_)];
 	item.method = to_std_string(g.get_method());
 	item.url = to_std_string(g.get_url());
-	item.body = to_std_string(g.get_request_body());
+	commit_request_body();
 	item.jsonpath = to_std_string(g.get_response_jsonpath());
 	// Keep list label in sync if user only edited URL (optional: derive name from URL — skip for MVP)
 }
