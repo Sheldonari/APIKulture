@@ -30,6 +30,7 @@ static nlohmann::json read_json_or_default() {
 		                               {"collection_panel_width_px", 240.0},
 		                               {"request_panel_width_px", 420.0},
 		                               {"sidebar_collections_height_px", 220.0},
+		                               {"sidebar_requests_section_height_px", 260.0},
 		                               {"request_query_panel_height_px", 200.0},
 		                               {"request_headers_panel_height_px", 140.0},
 		                               {"response_headers_panel_height_px", 120.0}});
@@ -46,6 +47,7 @@ static nlohmann::json read_json_or_default() {
 		                               {"collection_panel_width_px", 240.0},
 		                               {"request_panel_width_px", 420.0},
 		                               {"sidebar_collections_height_px", 220.0},
+		                               {"sidebar_requests_section_height_px", 260.0},
 		                               {"request_query_panel_height_px", 200.0},
 		                               {"request_headers_panel_height_px", 140.0},
 		                               {"response_headers_panel_height_px", 120.0}});
@@ -98,6 +100,10 @@ float clamp_sidebar_collections_height_px(float v) {
 	return std::clamp(v, 120.f, 10000.f);
 }
 
+float clamp_sidebar_requests_section_height_px(float v) {
+	return std::clamp(v, 120.f, 10000.f);
+}
+
 float clamp_request_query_panel_height_px(float v) {
 	return std::clamp(v, 80.f, 10000.f);
 }
@@ -126,6 +132,8 @@ PersistedWindowState load_window_session() {
 			j.value("request_panel_width_px", 420.0));
 	s.sidebar_collections_height_px = clamp_sidebar_collections_height_px(
 			j.value("sidebar_collections_height_px", 220.0));
+	s.sidebar_requests_section_height_px = clamp_sidebar_requests_section_height_px(
+			j.value("sidebar_requests_section_height_px", 260.0));
 	s.request_query_panel_height_px = clamp_request_query_panel_height_px(
 			j.value("request_query_panel_height_px", 200.0));
 	s.request_headers_panel_height_px = clamp_request_headers_panel_height_px(
@@ -154,6 +162,8 @@ void save_window_session(const PersistedWindowState& state) {
 	j["request_panel_width_px"] = clamp_request_panel_width_px(state.request_panel_width_px);
 	j["sidebar_collections_height_px"] = clamp_sidebar_collections_height_px(
 			state.sidebar_collections_height_px);
+	j["sidebar_requests_section_height_px"] = clamp_sidebar_requests_section_height_px(
+		state.sidebar_requests_section_height_px);
 	j["request_query_panel_height_px"] = clamp_request_query_panel_height_px(
 			state.request_query_panel_height_px);
 	j["request_headers_panel_height_px"] = clamp_request_headers_panel_height_px(

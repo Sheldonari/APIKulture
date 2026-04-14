@@ -147,6 +147,7 @@ int main(int argc, char** argv) {
 		ui->set_collection_panel_width(ws.collection_panel_width_px);
 		ui->set_request_panel_width(ws.request_panel_width_px);
 		ui->set_sidebar_collections_height(ws.sidebar_collections_height_px);
+		ui->set_sidebar_requests_section_height(ws.sidebar_requests_section_height_px);
 		ui->set_request_query_panel_height(ws.request_query_panel_height_px);
 		ui->set_request_headers_panel_height(ws.request_headers_panel_height_px);
 		ui->set_response_headers_panel_height(ws.response_headers_panel_height_px);
@@ -229,6 +230,7 @@ int main(int argc, char** argv) {
 		snapshot.collection_panel_width_px = ui->get_collection_panel_width();
 		snapshot.request_panel_width_px = ui->get_request_panel_width();
 		snapshot.sidebar_collections_height_px = ui->get_sidebar_collections_height();
+		snapshot.sidebar_requests_section_height_px = ui->get_sidebar_requests_section_height();
 		snapshot.request_query_panel_height_px = ui->get_request_query_panel_height();
 		snapshot.request_headers_panel_height_px = ui->get_request_headers_panel_height();
 		snapshot.response_headers_panel_height_px = ui->get_response_headers_panel_height();

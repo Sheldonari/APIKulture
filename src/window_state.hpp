@@ -30,6 +30,8 @@ struct PersistedWindowState {
 	float request_panel_width_px = 420.f;
 	/// Horizontal splitter between collections list and requests list.
 	float sidebar_collections_height_px = 220.f;
+	/// Horizontal splitter between requests block (list + New/Dup/Del) and Save / import / environment.
+	float sidebar_requests_section_height_px = 260.f;
 	/// Horizontal splitter between query-parameters block and headers/body in the request column.
 	float request_query_panel_height_px = 200.f;
 	/// Horizontal splitter between request headers block and body in the request column.

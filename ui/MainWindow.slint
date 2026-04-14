@@ -489,6 +489,8 @@ export component MainWindow inherits Window {
 	in-out property <length> collection-panel-width: 240px;
 	in-out property <length> request-panel-width: 420px;
 	in-out property <length> sidebar-collections-height: 220px;
+	/// Requests block (title + list + New/Dup/Del) above the splitter; below: Save / import / environment.
+	in-out property <length> sidebar-requests-section-height: 260px;
 	/// Height of the query-parameters block (label + list + “+ param”) above the horizontal splitter.
 	/// Default must leave room for headers + body on short windows (min-height 640px); drag splitters to expand.
 	in-out property <length> request-query-panel-height: 200px;
@@ -611,7 +613,8 @@ export component MainWindow inherits Window {
 				}
 
 				VerticalBox {
-					vertical-stretch: 1;
+					height: sidebar-requests-section-height;
+					vertical-stretch: 0;
 					spacing: 4px;
 
 					Text {
@@ -680,6 +683,16 @@ export component MainWindow inherits Window {
 							}
 						}
 					}
+				}
+
+				HorizontalSplitter {
+					panel-height <=> sidebar-requests-section-height;
+					min-panel-height: 140px;
+					max-panel-height: 10000px;
+				}
+				VerticalBox {
+					vertical-stretch: 1;
+					spacing: 6px;
 
 					RectButton {
 						text: "Save all";
