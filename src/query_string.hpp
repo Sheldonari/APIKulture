@@ -28,6 +28,16 @@ std::string strip_url_query_preserving_fragment(std::string url);
 bool has_query_params_to_append(const std::vector<QueryParam>& params,
 		const std::map<std::string, std::string>& vars);
 
+/**
+ * @brief Parses query parameters from a full URL string and populates the provided vector.
+ * @param url The URL string to parse (e.g., "https://example.com/api?key1=val1&key2=val2").
+ * @param params A reference to the vector to be populated with extracted QueryParam objects.
+ * @param vars The environment variables (used to populate vars if needed, although usually not necessary for direct URL parsing).
+ */
+void populate_params_from_url(std::string_view url,
+		std::vector<QueryParam>& params,
+		const std::map<std::string, std::string>& vars = {});
+
 }  // namespace apikulture
 
 #endif

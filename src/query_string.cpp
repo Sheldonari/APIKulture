@@ -6,6 +6,9 @@
 
 namespace apikulture {
 
+// Used by url_encode_query_component (must not live only inside an anonymous namespace below).
+static const char k_hex_encode[] = "0123456789ABCDEF";
+
 namespace {
 
 void trim_ascii(std::string& s) {
@@ -13,7 +16,43 @@ void trim_ascii(std::string& s) {
 	while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
 }
 
-static const char kHex[] = "0123456789ABCDEF";
+bool hex_digit(char c, unsigned& out) {
+	if (c >= '0' && c <= '9') {
+		out = static_cast<unsigned>(c - '0');
+		return true;
+	}
+	if (c >= 'a' && c <= 'f') {
+		out = 10u + static_cast<unsigned>(c - 'a');
+		return true;
+	}
+	if (c >= 'A' && c <= 'F') {
+		out = 10u + static_cast<unsigned>(c - 'A');
+		return true;
+	}
+	return false;
+}
+
+/// Decode `application/x-www-form-urlencoded` component (percent + plus); same rules as url_import.cpp.
+void url_decode_query_component(std::string_view in, std::string& out) {
+	out.clear();
+	out.reserve(in.size());
+	for (size_t i = 0; i < in.size(); ++i) {
+		const char c = in[i];
+		if (c == '+') {
+			out += ' ';
+			continue;
+		}
+		if (c == '%' && i + 2 < in.size()) {
+			unsigned hi = 0, lo = 0;
+			if (hex_digit(in[i + 1], hi) && hex_digit(in[i + 2], lo)) {
+				out += static_cast<char>((hi << 4) | lo);
+				i += 2;
+				continue;
+			}
+		}
+		out += c;
+	}
+}
 
 }  // namespace
 
@@ -30,8 +69,8 @@ std::string url_encode_query_component(std::string_view s) {
 			out += '0';
 		} else {
 			out += '%';
-			out += kHex[c >> 4];
-			out += kHex[c & 0xF];
+			out += k_hex_encode[c >> 4];
+			out += k_hex_encode[c & 0xF];
 		}
 	}
 	return out;
@@ -109,6 +148,53 @@ bool has_query_params_to_append(const std::vector<QueryParam>& params,
 		if (!k.empty()) return true;
 	}
 	return false;
+}
+
+void populate_params_from_url(std::string_view url,
+		std::vector<QueryParam>& params,
+		const std::map<std::string, std::string>& /*vars*/) {
+	params.clear();
+
+	const size_t qpos = url.find('?');
+	const size_t hash_pos = url.find('#');
+
+	if (qpos == std::string::npos) {
+		return;
+	}
+
+	const size_t end_pos = (hash_pos == std::string::npos) ? url.size() : hash_pos;
+	const std::string query_string(url.substr(qpos + 1, end_pos - (qpos + 1)));
+
+	if (query_string.empty()) {
+		return;
+	}
+
+	std::stringstream ss(query_string);
+	std::string item;
+	while (std::getline(ss, item, '&')) {
+		const size_t eq_pos = item.find('=');
+		std::string key_encoded;
+		std::string value_encoded;
+
+		if (eq_pos == std::string::npos) {
+			key_encoded = item;
+			value_encoded = "";
+		} else {
+			key_encoded = item.substr(0, eq_pos);
+			value_encoded = item.substr(eq_pos + 1);
+		}
+
+		std::string key;
+		std::string value;
+		url_decode_query_component(key_encoded, key);
+		url_decode_query_component(value_encoded, value);
+
+		QueryParam param;
+		param.key = std::move(key);
+		param.value = std::move(value);
+		param.enabled = true;
+		params.push_back(std::move(param));
+	}
 }
 
 }  // namespace apikulture
