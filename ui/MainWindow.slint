@@ -398,6 +398,9 @@ export global AppLogic {
 	callback commit-environment-name();
 	callback commit-environment-variables();
 	callback request-body-edited();
+	/// Persist method / body-kind when the user changes the HTTP method or body format combo.
+	callback request-method-changed();
+	callback request-body-kind-changed();
 	callback query-param-key-edited(int, string);
 	callback query-param-value-edited(int, string);
 	callback query-param-enabled-changed(int, bool);
@@ -441,6 +444,8 @@ export global AppLogic {
 	in property <[bool]> request-header-enabled: [];
 
 	in-out property <string> method: "GET";
+	/// 0 = JSON, 1 = plain text, 2 = application/x-www-form-urlencoded (unless Headers override Content-Type).
+	in-out property <int> request-body-kind-index: 0;
 	in-out property <string> url: "";
 	in-out property <string> request-body: "";
 	in property <string> response-status: "";
@@ -467,6 +472,11 @@ export global AppLogic {
 export component MainWindow inherits Window {
 	// Theme comes from Palette (std-widgets); `unknown` follows OS. Override from C++ via
 	// `set_window_color_scheme` or env `APIKULTURE_COLOR_SCHEME` (light|dark|system|auto).
+	/// POST, PUT, PATCH, DELETE may carry a body; GET/HEAD/OPTIONS do not (RFC practice).
+	function method-allows-body(m: string) -> bool {
+		m == "POST" || m == "PUT" || m == "PATCH" || m == "DELETE"
+	}
+
 	in-out property <ColorScheme> window-color-scheme <=> Palette.color-scheme;
 	background: Palette.background;
 	icon: @image-url("icons/apikulture.svg");
@@ -815,6 +825,9 @@ export component MainWindow inherits Window {
 					current-value <=> AppLogic.method;
 					model: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 					width: 110px;
+					selected => {
+						AppLogic.request-method-changed();
+					}
 				}
 
 				CompactLineEdit {
@@ -867,6 +880,12 @@ export component MainWindow inherits Window {
 						Text {
 							text: "Query parameters";
 							font-size: 11px;
+						}
+						Text {
+							text: "Always sent as ?name=value on the URL for any method.";
+							font-size: 10px;
+							color: Palette.foreground;
+							wrap: word-wrap;
 						}
 						ScrollView {
 							vertical-stretch: 1;
@@ -978,30 +997,55 @@ export component MainWindow inherits Window {
 						spacing: 4px;
 						padding: 0px;
 
-						// Body is above headers so it stays visible: with query + headers first, the body
-						// sat below the fold or got zero height when vertical space was tight.
-						VerticalBox {
+						// Body only for methods that commonly carry a payload; stored when switching methods.
+						if method-allows-body(AppLogic.method): VerticalBox {
 							vertical-stretch: 0;
-							height: 200px;
+							min-height: 248px;
 							spacing: 4px;
 							padding: 0px;
 
+							HorizontalBox {
+								padding: 0px;
+								spacing: 8px;
+								Text {
+									text: "Body";
+									font-size: 11px;
+									vertical-alignment: center;
+								}
+								ComboBox {
+									horizontal-stretch: 1;
+									min-width: 200px;
+									model: ["JSON", "Plain text", "Form (URL-encoded)"];
+									current-index <=> AppLogic.request-body-kind-index;
+									selected => {
+										AppLogic.request-body-kind-changed();
+									}
+								}
+							}
 							Text {
-								text: "Body";
-								font-size: 11px;
+								text: "Default Content-Type follows Format unless you set Content-Type under Headers.";
+								font-size: 10px;
+								color: Palette.foreground;
+								wrap: word-wrap;
 							}
 							TextEdit {
 								horizontal-stretch: 1;
-								height: 168px;
+								height: 140px;
 								text <=> AppLogic.request-body;
 								wrap: word-wrap;
 								font-size: 12px;
 								font-family: "monospace";
-								placeholder-text: "Body for POST, PUT, PATCH (e.g. JSON)";
+								placeholder-text: "Request payload (JSON object, plain text, or urlencoded pairs)";
 								edited => {
 									AppLogic.request-body-edited();
 								}
 							}
+						}
+						if !method-allows-body(AppLogic.method): Text {
+							text: "Request body is not used for GET, HEAD, or OPTIONS. Use Query parameters or the URL path.";
+							font-size: 11px;
+							color: Palette.foreground;
+							wrap: word-wrap;
 						}
 
 						VerticalBox {

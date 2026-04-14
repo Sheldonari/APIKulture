@@ -85,6 +85,7 @@ void to_json(nlohmann::json& j, const RequestItem& r) {
 	                     {"query_params", qp},
 	                     {"headers", std::move(hdr)},
 	                     {"body", r.body},
+	                     {"body_kind", r.body_kind},
 	                     {"jsonpath", r.jsonpath},
 	                     {"last_response_status", r.last_response_status},
 	                     {"last_response_headers", r.last_response_headers},
@@ -125,6 +126,8 @@ void from_json(const nlohmann::json& j, RequestItem& r) {
 		}
 	}
 	r.body = j.value("body", std::string());
+	r.body_kind = j.value("body_kind", std::string("json"));
+	if (r.body_kind != "json" && r.body_kind != "text" && r.body_kind != "form") r.body_kind = "json";
 	r.jsonpath = j.value("jsonpath", std::string());
 	r.last_response_status = j.value("last_response_status", std::string());
 	r.last_response_headers = j.value("last_response_headers", std::string());

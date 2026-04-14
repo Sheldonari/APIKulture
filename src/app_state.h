@@ -72,6 +72,8 @@ public:
 
 	/// Call after MainWindow is created to load data into UI models.
 	void init_collections_ui();
+	/// Persist method, body format, URL, and body text from the UI into the current request item.
+	void persist_request_editor_to_item();
 
 private:
 	void worker_run();
@@ -115,6 +117,7 @@ private:
 	std::string pending_url_;
 	std::string pending_headers_;
 	std::string pending_body_;
+	std::string pending_body_kind_{"json"};
 
 	/// Set only after a successful HTTP response; used with JSONPath to build `response-body`.
 	std::optional<std::string> last_success_response_body_;

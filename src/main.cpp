@@ -191,6 +191,8 @@ int main(int argc, char** argv) {
 	logic.on_commit_environment_name([&state]() { state.commit_environment_name(); });
 	logic.on_commit_environment_variables([&state]() { state.commit_environment_variables(); });
 	logic.on_request_body_edited([&state]() { state.commit_request_body(); });
+	logic.on_request_method_changed([&state]() { state.persist_request_editor_to_item(); });
+	logic.on_request_body_kind_changed([&state]() { state.persist_request_editor_to_item(); });
 	logic.on_query_param_key_edited([&state](int idx, slint::SharedString text) {
 		state.query_param_key_edited(idx, std::move(text));
 	});

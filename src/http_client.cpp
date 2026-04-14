@@ -36,6 +36,12 @@ std::string httplib_content_type_arg(const std::vector<std::pair<std::string, st
 	return std::string(default_for_non_empty_body);
 }
 
+const char* default_mime_for_body_kind(const std::string& body_kind) {
+	if (body_kind == "text") return "text/plain";
+	if (body_kind == "form") return "application/x-www-form-urlencoded";
+	return "application/json";
+}
+
 }  // namespace
 
 void parse_url(const std::string& url, std::string& scheme, std::string& host, int& port, std::string& path) {
@@ -89,7 +95,8 @@ HttpResponse execute(const std::string& method,
 										 const std::string& url,
 										 const std::vector<std::pair<std::string, std::string>>& headers,
 										 const std::string& body,
-										 std::atomic<bool>* cancelled) {
+										 std::atomic<bool>* cancelled,
+										 const std::string& body_kind) {
 	HttpResponse result;
 
 	std::string scheme, host, path;
@@ -123,15 +130,18 @@ HttpResponse execute(const std::string& method,
 		client.set_read_timeout(30, 0);
 		client.set_write_timeout(30, 0);
 
-		const std::string json_ct = httplib_content_type_arg(headers, body, "application/json");
+		const std::string body_ct = httplib_content_type_arg(headers, body, default_mime_for_body_kind(body_kind));
 		const std::string octet_ct = httplib_content_type_arg(headers, body, "application/octet-stream");
 
 		auto do_req = [&]() -> decltype(client.Get(path, req_headers)) {
 			if (method_upper == "GET") return client.Get(path, req_headers);
-			if (method_upper == "POST") return client.Post(path, req_headers, body, json_ct);
-			if (method_upper == "PUT") return client.Put(path, req_headers, body, json_ct);
-			if (method_upper == "PATCH") return client.Patch(path, req_headers, body, json_ct);
-			if (method_upper == "DELETE") return client.Delete(path, req_headers);
+			if (method_upper == "POST") return client.Post(path, req_headers, body, body_ct);
+			if (method_upper == "PUT") return client.Put(path, req_headers, body, body_ct);
+			if (method_upper == "PATCH") return client.Patch(path, req_headers, body, body_ct);
+			if (method_upper == "DELETE") {
+				if (body.empty()) return client.Delete(path, req_headers);
+				return client.Delete(path, req_headers, body, body_ct);
+			}
 			if (method_upper == "HEAD") return client.Head(path, req_headers);
 			if (method_upper == "OPTIONS") return client.Options(path, req_headers);
 			return client.Post(path, req_headers, body, octet_ct);

@@ -107,6 +107,24 @@ std::string content_type_value_from_headers(const std::vector<std::pair<std::str
 	return {};
 }
 
+int body_kind_string_to_index(std::string_view s) {
+	if (s == "text") return 1;
+	if (s == "form") return 2;
+	return 0;
+}
+
+std::string body_kind_index_to_string(int idx) {
+	if (idx == 1) return "text";
+	if (idx == 2) return "form";
+	return "json";
+}
+
+bool http_method_allows_request_body(std::string_view method) {
+	std::string m(method);
+	for (auto& c : m) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+	return m == "POST" || m == "PUT" || m == "PATCH" || m == "DELETE";
+}
+
 }  // namespace
 
 apikulture::RequestItem* AppState::mutable_current_request_item() {
@@ -354,6 +372,7 @@ void AppState::commit_form_to_current_item() {
 	item.method = to_std_string(g.get_method());
 	item.url = to_std_string(g.get_url());
 	commit_request_body();
+	item.body_kind = body_kind_index_to_string(g.get_request_body_kind_index());
 	item.jsonpath = to_std_string(g.get_response_jsonpath());
 	// Keep list label in sync if user only edited URL (optional: derive name from URL — skip for MVP)
 }
@@ -371,6 +390,7 @@ void AppState::apply_form_from_current_item() {
 	g.set_method(slint::SharedString(item.method));
 	g.set_url(slint::SharedString(item.url));
 	g.set_request_body(slint::SharedString(item.body));
+	g.set_request_body_kind_index(body_kind_string_to_index(item.body_kind));
 	g.set_response_jsonpath(slint::SharedString(item.jsonpath));
 	refresh_query_param_models();
 	refresh_request_header_models();
@@ -404,6 +424,10 @@ void AppState::init_collections_ui() {
 	push_selection_to_ui();
 	apply_environment_fields_to_ui();
 	apply_form_from_current_item();
+}
+
+void AppState::persist_request_editor_to_item() {
+	commit_form_to_current_item();
 }
 
 void AppState::select_collection(int index) {
@@ -754,6 +778,14 @@ void AppState::send_request() {
 	}
 	pending_headers_ = hdr_lines.str();
 	pending_body_ = apikulture::substitute_variables(raw_body, var_map);
+	if (req_item) {
+		pending_body_kind_ = req_item->body_kind;
+	} else {
+		pending_body_kind_ = "json";
+	}
+	if (!http_method_allows_request_body(pending_method_)) {
+		pending_body_.clear();
+	}
 
 	if (pending_url_.empty()) {
 		last_success_response_body_ = std::nullopt;
@@ -863,7 +895,7 @@ void AppState::copy_response_body() {
 
 void AppState::worker_run() {
 	while (true) {
-		std::string method, url, headers_text, body;
+		std::string method, url, headers_text, body, body_kind;
 		{
 			std::unique_lock<std::mutex> lock(mutex_);
 			cv_.wait(lock, [this] { return pending_work_ || shutdown_; });
@@ -874,11 +906,12 @@ void AppState::worker_run() {
 			url = pending_url_;
 			headers_text = pending_headers_;
 			body = pending_body_;
+			body_kind = pending_body_kind_;
 			pending_work_ = false;
 		}
 
 		auto headers = parse_headers(headers_text);
-		HttpResponse res = execute(method, url, headers, body, &cancelled_);
+		HttpResponse res = execute(method, url, headers, body, &cancelled_, body_kind);
 		const std::string response_content_type = content_type_value_from_headers(res.headers);
 
 		slint::invoke_from_event_loop([this, res, response_content_type]() {

@@ -32,6 +32,8 @@ struct RequestItem {
 	std::vector<QueryParam> query_params;
 	std::vector<HeaderRow> request_headers;
 	std::string body;
+	/// Default body encoding when `Content-Type` is not set in headers: json | text | form (x-www-form-urlencoded).
+	std::string body_kind{"json"};
 	/// Optional JSONPath applied to the response body when displaying (e.g. "$.data.items[*]").
 	std::string jsonpath;
 	/// Last completed HTTP response for this request (persisted across sessions).
