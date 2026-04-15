@@ -3,11 +3,11 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>APIkulture — REST API client for Linux, Windows &amp; macOS</title>
-	<meta name="description" content="A fast, native REST API tester with collections, environments, OpenAPI import, and HTTPS. Built with C++ and Slint.">
+	<title>APIkulture — REST API client (Linux AppImage)</title>
+	<meta name="description" content="A fast, native REST API tester with collections, environments, OpenAPI import, and HTTPS. Download the Linux x86_64 AppImage, or build from source. Windows and macOS builds coming soon.">
 	<link rel="canonical" href="https://www.apikulture.com/">
 	<meta property="og:title" content="APIkulture — REST API client">
-	<meta property="og:description" content="Collections, environments, OpenAPI import, and HTTPS. Native app for Linux, Windows, and macOS.">
+	<meta property="og:description" content="Collections, environments, OpenAPI import, and HTTPS. Linux AppImage available; Windows and macOS coming soon.">
 	<meta property="og:url" content="https://www.apikulture.com/">
 	<meta property="og:type" content="website">
 	<meta property="og:image" content="https://www.apikulture.com/assets/apikulture.svg">
@@ -27,6 +27,7 @@
 			<nav aria-label="Primary">
 				<ul>
 					<li><a href="#features">Features</a></li>
+					<li><a href="#download">Download</a></li>
 					<li><a href="#build">Build</a></li>
 					<li><a href="#footer-links">Links</a></li>
 				</ul>
@@ -43,11 +44,12 @@
 						A native REST client for sending requests, organizing collections, and importing OpenAPI—without a browser tab farm.
 					</p>
 					<div class="hero-actions">
-						<a class="btn btn-primary" href="#build">Build from source</a>
+						<a class="btn btn-primary" href="https://codeberg.org/Sheldonari/APIKulture/releases/download/1.0.0/APIkulture-1.0.0-x86_64.AppImage">Download for Linux</a>
+						<a class="btn btn-secondary" href="#build">Build from source</a>
 						<a class="btn btn-secondary" href="https://codeberg.org/Sheldonari/APIKulture">View on Codeberg</a>
 					</div>
 					<p class="hero-meta">
-						Open source · Windows, Linux, macOS · Slint UI · C++17
+						Open source · Linux AppImage (x86_64) · Windows &amp; macOS coming soon · Slint UI · C++20
 					</p>
 				</div>
 				<div class="hero-art" aria-hidden="true">
@@ -91,10 +93,42 @@
 						<p>Material-style theme with system-aware light/dark support and optional overrides via environment variables or CLI flags.</p>
 					</article>
 				</div>
-				<div class="platforms" aria-label="Platforms">
-					<span>Windows</span>
-					<span>Linux</span>
-					<span>macOS</span>
+				<div class="platforms" aria-label="Download availability by platform">
+					<span class="platform-ok">Linux (AppImage)</span>
+					<span class="platform-soon">Windows <span class="sr-only">(not yet available)</span><span aria-hidden="true">(soon)</span></span>
+					<span class="platform-soon">macOS <span class="sr-only">(not yet available)</span><span aria-hidden="true">(soon)</span></span>
+				</div>
+			</div>
+		</section>
+
+		<section id="download" aria-labelledby="download-heading">
+			<div class="wrap">
+				<header class="section-head">
+					<h2 id="download-heading">Download</h2>
+					<p>Prebuilt packages are rolling out by platform. Right now, Linux is available as a portable AppImage; Windows and macOS builds are not ready yet.</p>
+				</header>
+				<div class="download-options">
+					<div class="download-row">
+						<div>
+							<h3>Linux (x86_64)</h3>
+							<p class="download-meta">AppImage · v1.0.0 · make executable, then run (e.g. <code>chmod +x APIkulture-1.0.0-x86_64.AppImage</code>)</p>
+						</div>
+						<a class="btn btn-primary" href="https://codeberg.org/Sheldonari/APIKulture/releases/download/1.0.0/APIkulture-1.0.0-x86_64.AppImage">Download AppImage</a>
+					</div>
+					<div class="download-row download-row--soon">
+						<div>
+							<h3>Windows</h3>
+							<p class="download-meta">Installer or portable build — not available yet.</p>
+						</div>
+						<span class="download-badge" aria-hidden="true">Coming soon</span>
+					</div>
+					<div class="download-row download-row--soon">
+						<div>
+							<h3>macOS</h3>
+							<p class="download-meta">Disk image or app bundle — not available yet.</p>
+						</div>
+						<span class="download-badge" aria-hidden="true">Coming soon</span>
+					</div>
 				</div>
 			</div>
 		</section>
