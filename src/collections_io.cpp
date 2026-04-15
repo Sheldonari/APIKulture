@@ -1,5 +1,6 @@
 #include "collections_io.hpp"
 
+#include <map>
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -32,42 +33,38 @@ void parse_legacy_headers_string(const std::string& text, std::vector<apikulture
 	}
 }
 
+void parse_variables_json(const nlohmann::json& vars_j, std::vector<std::pair<std::string, std::string>>& out) {
+	out.clear();
+	if (!vars_j.is_object() && !vars_j.is_array()) return;
+	if (vars_j.is_object()) {
+		for (auto it = vars_j.begin(); it != vars_j.end(); ++it) {
+			if (it.value().is_string()) {
+				out.emplace_back(it.key(), it.value().get<std::string>());
+			}
+		}
+		std::sort(out.begin(), out.end(),
+				[](const auto& a, const auto& b) { return a.first < b.first; });
+	} else {
+		for (const auto& row : vars_j) {
+			if (!row.is_object()) continue;
+			const std::string k = row.value("key", std::string());
+			const std::string v = row.value("value", std::string());
+			if (!k.empty()) out.emplace_back(k, v);
+		}
+	}
+}
+
 }  // namespace
 
 namespace apikulture {
 
 void to_json(nlohmann::json& j, const Environment& e) {
-	nlohmann::json vars = nlohmann::json::object();
-	for (const auto& kv : e.variables) {
-		vars[kv.first] = kv.second;
-	}
-	j = nlohmann::json{{"name", e.name},
-	                     {"base_url", e.base_url},
-	                     {"variables", std::move(vars)}};
+	j = nlohmann::json{{"name", e.name}, {"base_url", e.base_url}};
 }
 
 void from_json(const nlohmann::json& j, Environment& e) {
 	e.name = j.value("name", std::string("Default"));
 	e.base_url = j.value("base_url", std::string());
-	e.variables.clear();
-	if (j.contains("variables")) {
-		if (j["variables"].is_object()) {
-			for (auto it = j["variables"].begin(); it != j["variables"].end(); ++it) {
-				if (it.value().is_string()) {
-					e.variables.emplace_back(it.key(), it.value().get<std::string>());
-				}
-			}
-			std::sort(e.variables.begin(), e.variables.end(),
-					[](const auto& a, const auto& b) { return a.first < b.first; });
-		} else if (j["variables"].is_array()) {
-			for (const auto& row : j["variables"]) {
-				if (!row.is_object()) continue;
-				const std::string k = row.value("key", std::string());
-				const std::string v = row.value("value", std::string());
-				if (!k.empty()) e.variables.emplace_back(k, v);
-			}
-		}
-	}
 }
 
 void to_json(nlohmann::json& j, const RequestItem& r) {
@@ -137,7 +134,12 @@ void from_json(const nlohmann::json& j, RequestItem& r) {
 }
 
 void to_json(nlohmann::json& j, const Collection& c) {
+	nlohmann::json vars = nlohmann::json::object();
+	for (const auto& kv : c.variables) {
+		vars[kv.first] = kv.second;
+	}
 	j = nlohmann::json{{"name", c.name},
+	                     {"variables", std::move(vars)},
 	                     {"environments", c.environments},
 	                     {"active_environment_index", c.active_environment_index},
 	                     {"items", c.items},
@@ -182,6 +184,21 @@ void from_json(const nlohmann::json& j, Collection& c) {
 				|| c.active_environment_index >= static_cast<int>(c.environments.size())) {
 			c.active_environment_index = 0;
 		}
+	}
+
+	c.variables.clear();
+	if (j.contains("variables")) {
+		parse_variables_json(j["variables"], c.variables);
+	} else if (j.contains("environments") && j["environments"].is_array()) {
+		// Legacy: variables lived on each environment — merge into one collection-wide map (later env wins on key clash).
+		std::map<std::string, std::string> merged;
+		for (const auto& je : j["environments"]) {
+			if (!je.contains("variables")) continue;
+			std::vector<std::pair<std::string, std::string>> chunk;
+			parse_variables_json(je["variables"], chunk);
+			for (const auto& kv : chunk) merged[kv.first] = kv.second;
+		}
+		c.variables.assign(merged.begin(), merged.end());
 	}
 }
 

@@ -77,10 +77,11 @@ std::string substitute_variables(const std::string& text,
 	return result;
 }
 
-std::map<std::string, std::string> effective_variable_map(const Environment& env,
+std::map<std::string, std::string> effective_variable_map(
+		const std::vector<std::pair<std::string, std::string>>& collection_variables, const Environment& env,
 		const std::map<std::string, std::map<std::string, std::string>>& local_overrides_by_env_name) {
 	std::map<std::string, std::string> out;
-	for (const auto& kv : env.variables) {
+	for (const auto& kv : collection_variables) {
 		out[kv.first] = kv.second;
 	}
 	auto oit = local_overrides_by_env_name.find(env.name);

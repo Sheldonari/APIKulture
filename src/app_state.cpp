@@ -245,19 +245,23 @@ void AppState::refresh_environment_names_model() {
 }
 
 void AppState::commit_environment_fields_to_active() {
+	apikulture::Collection* col = mutable_current_collection();
+	if (!col) return;
 	if (apikulture::Environment* env = mutable_active_environment()) {
 		auto& g = ui_->global<AppLogic>();
 		env->base_url = to_std_string(g.get_environment_base_url());
 		trim_in_place(env->base_url);
-		env->variables = apikulture::parse_environment_lines(to_std_string(g.get_environment_variables()));
+		col->variables = apikulture::parse_environment_lines(to_std_string(g.get_environment_variables()));
 	}
 }
 
 void AppState::apply_environment_fields_to_ui() {
 	auto& g = ui_->global<AppLogic>();
+	apikulture::Collection* col = mutable_current_collection();
 	if (apikulture::Environment* env = mutable_active_environment()) {
 		g.set_environment_base_url(slint::SharedString(env->base_url));
-		g.set_environment_variables(slint::SharedString(apikulture::format_environment_lines(env->variables)));
+		g.set_environment_variables(slint::SharedString(
+				col ? apikulture::format_environment_lines(col->variables) : std::string()));
 		g.set_environment_name_edit(slint::SharedString(env->name));
 		g.set_active_environment_name(slint::SharedString(env->name));
 	} else {
@@ -743,9 +747,11 @@ void AppState::send_request() {
 
 	std::map<std::string, std::string> var_map;
 	std::string base_subst;
-	if (apikulture::Environment* env = mutable_active_environment()) {
+	apikulture::Collection* col = mutable_current_collection();
+	apikulture::Environment* env = mutable_active_environment();
+	if (col && env) {
 		auto local = apikulture::collections_io::load_local_overrides();
-		var_map = apikulture::effective_variable_map(*env, local);
+		var_map = apikulture::effective_variable_map(col->variables, *env, local);
 		std::string base_raw = apikulture::effective_base_url_field(*env, local);
 		if (base_raw.empty()) {
 			if (auto it = var_map.find("base_url"); it != var_map.end()) base_raw = it->second;
@@ -845,9 +851,11 @@ bool AppState::try_apply_url_import_from_text(const std::string& raw_utf8) {
 
 	std::map<std::string, std::string> var_map;
 	std::string base_subst;
-	if (apikulture::Environment* env = mutable_active_environment()) {
+	apikulture::Collection* col = mutable_current_collection();
+	apikulture::Environment* env = mutable_active_environment();
+	if (col && env) {
 		const auto local = apikulture::collections_io::load_local_overrides();
-		var_map = apikulture::effective_variable_map(*env, local);
+		var_map = apikulture::effective_variable_map(col->variables, *env, local);
 		std::string base_raw = apikulture::effective_base_url_field(*env, local);
 		if (base_raw.empty()) {
 			if (auto it = var_map.find("base_url"); it != var_map.end()) base_raw = it->second;

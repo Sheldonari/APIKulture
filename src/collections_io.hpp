@@ -49,6 +49,8 @@ struct RequestItem {
 
 struct Collection {
 	std::string name{"Collection"};
+	/// Shared KEY=value variables for all environments in this collection ({{KEY}} substitution on send).
+	std::vector<std::pair<std::string, std::string>> variables;
 	std::vector<Environment> environments{{Environment{}}};
 	int active_environment_index{0};
 	std::vector<RequestItem> items;

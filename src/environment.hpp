@@ -11,7 +11,6 @@ struct Environment {
 	std::string name{"Default"};
 	/// Optional origin for this environment; relative request paths are joined here (after `{{var}}` substitution).
 	std::string base_url;
-	std::vector<std::pair<std::string, std::string>> variables;
 };
 
 /// Parse "KEY=value" lines (first '=' separates; '#' starts a comment line).
@@ -24,8 +23,9 @@ std::string format_environment_lines(const std::vector<std::pair<std::string, st
 std::string substitute_variables(const std::string& text,
 		const std::map<std::string, std::string>& vars);
 
-/// Merge env.variables with optional local overrides for this environment name (local wins on key clash).
-std::map<std::string, std::string> effective_variable_map(const Environment& env,
+/// Merge collection-wide variables with optional local overrides for this environment name (local wins on key clash).
+std::map<std::string, std::string> effective_variable_map(
+		const std::vector<std::pair<std::string, std::string>>& collection_variables, const Environment& env,
 		const std::map<std::string, std::map<std::string, std::string>>& local_overrides_by_env_name);
 
 /// Shared `base_url` field, optionally overridden by `local_overrides[env.name]["base_url"]`.
