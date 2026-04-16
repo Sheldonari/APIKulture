@@ -7,6 +7,7 @@
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <windows.h>
 #endif
 
@@ -18,6 +19,7 @@ bool set_utf8_x11(std::string_view text);
 }
 #endif
 
+#if defined(__APPLE__)
 namespace {
 
 std::optional<std::string> read_pipe_stdout(const char* cmd) {
@@ -37,6 +39,7 @@ std::optional<std::string> read_pipe_stdout(const char* cmd) {
 }
 
 }  // namespace
+#endif
 
 std::optional<std::string> get_utf8() {
 #if defined(_WIN32)
