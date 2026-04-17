@@ -125,6 +125,35 @@ bool http_method_allows_request_body(std::string_view method) {
 	return m == "POST" || m == "PUT" || m == "PATCH" || m == "DELETE";
 }
 
+/// Same URL as HTTP send: variables, base URL join, then query-parameter table merged (encoded).
+std::string build_resolved_request_url(const std::string& raw_url,
+		const apikulture::RequestItem* req_item,
+		apikulture::Collection* col,
+		apikulture::Environment* env) {
+	std::map<std::string, std::string> var_map;
+	std::string base_subst;
+	if (col && env) {
+		const auto local = apikulture::collections_io::load_local_overrides();
+		var_map = apikulture::effective_variable_map(col->variables, *env, local);
+		std::string base_raw = apikulture::effective_base_url_field(*env, local);
+		if (base_raw.empty()) {
+			if (auto it = var_map.find("base_url"); it != var_map.end()) base_raw = it->second;
+		}
+		base_subst = apikulture::substitute_variables(base_raw, var_map);
+		if (!base_subst.empty()) var_map["base_url"] = base_subst;
+	}
+	std::string url_after_vars = apikulture::substitute_variables(raw_url, var_map);
+	std::string out = apikulture::resolve_url_with_base(base_subst, url_after_vars);
+	apikulture::normalize_http_url_delimiters_inplace(out);
+	if (req_item) {
+		if (apikulture::has_query_params_to_append(req_item->query_params, var_map)) {
+			out = apikulture::strip_url_query_preserving_fragment(std::move(out));
+		}
+		out = apikulture::append_query_params_to_url(out, req_item->query_params, var_map);
+	}
+	return out;
+}
+
 }  // namespace
 
 apikulture::RequestItem* AppState::mutable_current_request_item() {
@@ -191,9 +220,13 @@ AppState::AppState(const MainWindowHandle& ui) : ui_(ui) {
 	restore_request_index_for_current_collection();
 }
 
-AppState::~AppState() {
-	commit_form_to_current_item();
+void AppState::save_collections_state() {
+	sync_request_editor_before_http();
 	apikulture::collections_io::save_workspace(workspace_);
+}
+
+AppState::~AppState() {
+	save_collections_state();
 	cancel_request();
 	{
 		std::lock_guard<std::mutex> lock(mutex_);
@@ -270,6 +303,7 @@ void AppState::apply_environment_fields_to_ui() {
 		g.set_environment_name_edit(slint::SharedString(""));
 		g.set_active_environment_name(slint::SharedString(""));
 	}
+	refresh_resolved_request_url_display();
 }
 
 void AppState::push_name_edits_to_ui() {
@@ -333,6 +367,55 @@ void AppState::sync_url_field_to_query_table_if_changed() {
 		last_url_field_sync_ = to_std_string(g.get_url());
 		trim_in_place(last_url_field_sync_);
 	}
+}
+
+void AppState::sync_request_editor_before_http() {
+	commit_form_to_current_item();
+	sync_request_headers_from_ui_models_into_item();
+	sync_url_field_to_query_table_if_changed();
+	commit_form_to_current_item();
+}
+
+void AppState::refresh_resolved_request_url_display() {
+	auto& g = ui_->global<AppLogic>();
+	apikulture::RequestItem* item = mutable_current_request_item();
+	if (!item) {
+		g.set_resolved_request_url(slint::SharedString(""));
+		return;
+	}
+	// Do not call commit_form here. This runs from apply_form_from_current_item right after
+	// set_url(); commit would read get_url() before the binding applies and would clear item.url.
+	std::string raw_url = to_std_string(g.get_url());
+	trim_in_place(raw_url);
+	if (raw_url.empty()) {
+		raw_url = item->url;
+		trim_in_place(raw_url);
+	}
+	const std::string resolved = build_resolved_request_url(
+			raw_url, item, mutable_current_collection(), mutable_active_environment());
+	g.set_resolved_request_url(slint::SharedString(resolved));
+}
+
+void AppState::request_url_edited() {
+	commit_form_to_current_item();
+	sync_url_field_to_query_table_if_changed();
+	commit_form_to_current_item();
+	refresh_resolved_request_url_display();
+}
+
+void AppState::copy_request_url() {
+	sync_request_editor_before_http();
+	auto& g = ui_->global<AppLogic>();
+	std::string raw_url = to_std_string(g.get_url());
+	trim_in_place(raw_url);
+	if (raw_url.empty() && mutable_current_request_item()) {
+		raw_url = mutable_current_request_item()->url;
+		trim_in_place(raw_url);
+	}
+	const std::string resolved = build_resolved_request_url(raw_url, mutable_current_request_item(),
+			mutable_current_collection(), mutable_active_environment());
+	g.set_resolved_request_url(slint::SharedString(resolved));
+	(void)apikulture::clipboard::set_utf8(resolved);
 }
 
 void AppState::sync_request_headers_from_ui_models_into_item() {
@@ -419,6 +502,7 @@ void AppState::apply_form_from_current_item() {
 		last_success_content_type_ = std::nullopt;
 		push_response_body("");
 	}
+	refresh_resolved_request_url_display();
 }
 
 void AppState::init_collections_ui() {
@@ -432,6 +516,7 @@ void AppState::init_collections_ui() {
 
 void AppState::persist_request_editor_to_item() {
 	commit_form_to_current_item();
+	refresh_resolved_request_url_display();
 }
 
 void AppState::select_collection(int index) {
@@ -736,40 +821,30 @@ void AppState::commit_request_name() {
 
 void AppState::send_request() {
 	if (worker_busy_) return;
-	commit_form_to_current_item();
-	sync_request_headers_from_ui_models_into_item();
-	sync_url_field_to_query_table_if_changed();
+	sync_request_editor_before_http();
 
 	auto& g = ui_->global<AppLogic>();
 	pending_method_ = to_std_string(g.get_method());
-	const std::string raw_url = to_std_string(g.get_url());
 	const std::string raw_body = to_std_string(g.get_request_body());
 
+	pending_url_ = build_resolved_request_url(
+			to_std_string(g.get_url()), mutable_current_request_item(), mutable_current_collection(), mutable_active_environment());
+	apikulture::RequestItem* req_item = mutable_current_request_item();
+
 	std::map<std::string, std::string> var_map;
-	std::string base_subst;
 	apikulture::Collection* col = mutable_current_collection();
 	apikulture::Environment* env = mutable_active_environment();
 	if (col && env) {
-		auto local = apikulture::collections_io::load_local_overrides();
+		const auto local = apikulture::collections_io::load_local_overrides();
 		var_map = apikulture::effective_variable_map(col->variables, *env, local);
 		std::string base_raw = apikulture::effective_base_url_field(*env, local);
 		if (base_raw.empty()) {
 			if (auto it = var_map.find("base_url"); it != var_map.end()) base_raw = it->second;
 		}
-		base_subst = apikulture::substitute_variables(base_raw, var_map);
+		const std::string base_subst = apikulture::substitute_variables(base_raw, var_map);
 		if (!base_subst.empty()) var_map["base_url"] = base_subst;
 	}
 
-	std::string url_after_vars = apikulture::substitute_variables(raw_url, var_map);
-	pending_url_ = apikulture::resolve_url_with_base(base_subst, url_after_vars);
-	apikulture::normalize_http_url_delimiters_inplace(pending_url_);
-	apikulture::RequestItem* req_item = mutable_current_request_item();
-	if (req_item) {
-		if (apikulture::has_query_params_to_append(req_item->query_params, var_map)) {
-			pending_url_ = apikulture::strip_url_query_preserving_fragment(std::move(pending_url_));
-		}
-		pending_url_ = apikulture::append_query_params_to_url(pending_url_, req_item->query_params, var_map);
-	}
 	std::ostringstream hdr_lines;
 	if (req_item) {
 		for (const auto& h : req_item->request_headers) {
@@ -870,14 +945,24 @@ bool AppState::try_apply_url_import_from_text(const std::string& raw_utf8) {
 		return false;
 	}
 
+	// Only replace the query-parameter table when the address bar actually contains a `?` (after
+	// normalizing fullwidth delimiters). Path-only edits must not wipe table rows — those params
+	// are authored in the sidebar, not duplicated in the URL string.
+	std::string raw_has_q = raw_utf8;
+	apikulture::normalize_http_url_delimiters_inplace(raw_has_q);
+	const bool url_has_query = raw_has_q.find('?') != std::string::npos;
+
 	item->url = std::move(url_out);
-	item->query_params = std::move(params);
-	if (item->query_params.empty()) {
+	if (url_has_query) {
+		item->query_params = std::move(params);
+		if (item->query_params.empty()) {
+			item->query_params.push_back({});
+		}
+	} else if (item->query_params.empty()) {
 		item->query_params.push_back({});
 	}
-	item->method = "GET";
+
 	g.set_import_status(slint::SharedString(""));
-	g.set_method(slint::SharedString("GET"));
 	g.set_url(slint::SharedString(item->url));
 	refresh_query_param_models();
 	(void)apikulture::collections_io::save_workspace(workspace_);
@@ -1044,6 +1129,7 @@ void AppState::commit_environment_name() {
 
 void AppState::commit_environment_variables() {
 	commit_environment_fields_to_active();
+	refresh_resolved_request_url_display();
 }
 
 void AppState::refresh_query_param_models() {
@@ -1092,6 +1178,7 @@ void AppState::query_param_key_edited(int index, slint::SharedString text) {
 			query_param_keys_model_->set_row_data(index, text);
 		}
 	}
+	refresh_resolved_request_url_display();
 }
 
 void AppState::query_param_value_edited(int index, slint::SharedString text) {
@@ -1107,6 +1194,7 @@ void AppState::query_param_value_edited(int index, slint::SharedString text) {
 			query_param_values_model_->set_row_data(index, text);
 		}
 	}
+	refresh_resolved_request_url_display();
 }
 
 void AppState::query_param_enabled_changed(int index, bool enabled) {
@@ -1122,6 +1210,7 @@ void AppState::query_param_enabled_changed(int index, bool enabled) {
 			query_param_enabled_model_->set_row_data(index, enabled);
 		}
 	}
+	refresh_resolved_request_url_display();
 }
 
 void AppState::add_query_param() {
@@ -1132,21 +1221,23 @@ void AppState::add_query_param() {
 	}
 	item->query_params.push_back({});
 	refresh_query_param_models();
+	refresh_resolved_request_url_display();
 }
 
 void AppState::remove_query_param(int index) {
 	auto* item = mutable_current_request_item();
 	if (!item || index < 0) return;
+	if (static_cast<size_t>(index) >= item->query_params.size()) return;
+	// Keep rows in the workspace: turn off instead of erasing (user can delete key/value or re-enable).
 	if (item->query_params.size() <= 1) {
 		item->query_params[0] = {};
 		refresh_query_param_models();
+		refresh_resolved_request_url_display();
 		return;
 	}
-	if (static_cast<size_t>(index) < item->query_params.size()) {
-		item->query_params.erase(item->query_params.begin() + index);
-	}
-	if (item->query_params.empty()) item->query_params.push_back({});
+	item->query_params[static_cast<size_t>(index)].enabled = false;
 	refresh_query_param_models();
+	refresh_resolved_request_url_display();
 }
 
 void AppState::refresh_request_header_models() {

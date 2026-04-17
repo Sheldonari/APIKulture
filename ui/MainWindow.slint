@@ -5,12 +5,12 @@ component RectButton inherits Rectangle {
 	in property <string> text: "";
 	in property <bool> primary: false;
 	in property <bool> enabled: true;
-	/// Minimum height (toolbar / “Aa” uses a shorter value).
-	in property <length> min-btn-height: 40px;
+	/// Minimum height (toolbar rows override shorter to match CompactLineEdit).
+	in property <length> min-btn-height: 30px;
 	/// Minimum width; keep at least touch-target size unless parent overrides width/height.
-	in property <length> min-btn-width: 40px;
-	in property <length> pad-h: 16px;
-	in property <length> pad-v: 6px;
+	in property <length> min-btn-width: 30px;
+	in property <length> pad-h: 12px;
+	in property <length> pad-v: 3px;
 	callback clicked;
 
 	border-width: 0px;
@@ -57,7 +57,7 @@ component RectButton inherits Rectangle {
 /// Toolbar-sized button that shows an icon (same visual language as `RectButton`).
 component IconRectButton inherits Rectangle {
 	in property <image> icon;
-	in property <length> min-btn-size: 28px;
+	in property <length> min-btn-size: 26px;
 	callback clicked;
 
 	min-width: min-btn-size;
@@ -80,8 +80,8 @@ component IconRectButton inherits Rectangle {
 
 	Image {
 		source: root.icon;
-		width: 18px;
-		height: 18px;
+		width: 16px;
+		height: 16px;
 		x: (parent.width - self.width) / 2;
 		y: (parent.height - self.height) / 2;
 		colorize: Palette.control-foreground;
@@ -381,6 +381,8 @@ export global AppLogic {
 	callback send-request();
 	callback cancel-request();
 	callback request-url-accepted();
+	callback request-url-edited();
+	callback copy-request-url();
 	callback copy-response-body();
 	callback select-collection(int);
 	callback select-request(int);
@@ -447,6 +449,8 @@ export global AppLogic {
 	/// 0 = JSON, 1 = plain text, 2 = application/x-www-form-urlencoded (unless Headers override Content-Type).
 	in-out property <int> request-body-kind-index: 0;
 	in-out property <string> url: "";
+	/// Full URL after base URL, variables, and query-parameter table (matches the HTTP request).
+	in property <string> resolved-request-url: "";
 	in-out property <string> request-body: "";
 	in property <string> response-status: "";
 	/// Live and final request duration, e.g. "1.23 s"; empty when idle / after switching request.
@@ -495,7 +499,7 @@ export component MainWindow inherits Window {
 	/// Default must leave room for headers + body on short windows (min-height 640px); drag splitters to expand.
 	in-out property <length> request-query-panel-height: 200px;
 	/// Height of the request headers block (label + grid + “+ header”) above the splitter before the body.
-	in-out property <length> request-headers-panel-height: 140px;
+	in-out property <length> request-headers-panel-height: 80px;
 	/// Height of the response headers block (label + scroll area) above the horizontal splitter.
 	in-out property <length> response-headers-panel-height: 120px;
 
@@ -548,7 +552,7 @@ export component MainWindow inherits Window {
 						color: Palette.foreground;
 					}
 					ListView {
-						min-height: 80px;
+						min-height: 30px;
 						vertical-stretch: 1;
 						for name[index] in AppLogic.collection-names: col-touch := TouchArea {
 							height: 28px;
@@ -748,6 +752,8 @@ export component MainWindow inherits Window {
 							AppLogic.environment-changed(name);
 						}
 						min-width: 120px;
+						min-height: 28px;
+						max-height: 30px;
 						horizontal-stretch: 1;
 					}
 					CompactLineEdit {
@@ -840,37 +846,73 @@ export component MainWindow inherits Window {
 			horizontal-stretch: 1;
 			vertical-stretch: 1;
 
-			HorizontalBox {
+			VerticalBox {
 				padding: 0px;
-				spacing: 4px;
-				alignment: stretch;
+				spacing: 3px;
 
-				ComboBox {
-					current-value <=> AppLogic.method;
-					model: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
-					width: 110px;
-					selected => {
-						AppLogic.request-method-changed();
+				HorizontalBox {
+					padding: 0px;
+					spacing: 4px;
+					alignment: stretch;
+
+					ComboBox {
+						current-value <=> AppLogic.method;
+						model: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+						width: 110px;
+						min-height: 28px;
+						max-height: 30px;
+						selected => {
+							AppLogic.request-method-changed();
+						}
+					}
+
+					CompactLineEdit {
+						placeholder-text: "/v1/resource or https://host/path";
+						text <=> AppLogic.url;
+						horizontal-stretch: 1;
+						edited => {
+							AppLogic.request-url-edited();
+						}
+						accepted => {
+							AppLogic.request-url-accepted();
+						}
+					}
+
+					RectButton {
+						text: AppLogic.loading ? "Cancel" : "Send";
+						primary: !AppLogic.loading;
+						min-btn-height: 28px;
+						pad-v: 2px;
+						pad-h: 14px;
+						clicked => {
+							if (AppLogic.loading) {
+								AppLogic.cancel-request();
+							} else {
+								AppLogic.send-request();
+							}
+						}
 					}
 				}
 
-				CompactLineEdit {
-					placeholder-text: "/v1/resource or https://host/path";
-					text <=> AppLogic.url;
-					horizontal-stretch: 1;
-					accepted => {
-						AppLogic.request-url-accepted();
-					}
-				}
+				HorizontalBox {
+					padding: 0px;
+					spacing: 4px;
+					alignment: stretch;
 
-				RectButton {
-					text: AppLogic.loading ? "Cancel" : "Send";
-					primary: !AppLogic.loading;
-					clicked => {
-						if (AppLogic.loading) {
-							AppLogic.cancel-request();
-						} else {
-							AppLogic.send-request();
+					Text {
+						text: AppLogic.resolved-request-url;
+						font-size: 11px;
+						color: Palette.foreground;
+						wrap: word-wrap;
+						horizontal-stretch: 1;
+						vertical-alignment: center;
+					}
+
+					IconRectButton {
+						vertical-stretch: 0;
+						icon: @image-url("icons/copy.svg");
+						clicked => {
+							AppLogic.copy-request-url();
 						}
 					}
 				}
@@ -904,12 +946,6 @@ export component MainWindow inherits Window {
 						Text {
 							text: "Query parameters";
 							font-size: 11px;
-						}
-						Text {
-							text: "Always sent as ?name=value on the URL for any method.";
-							font-size: 10px;
-							color: Palette.foreground;
-							wrap: word-wrap;
 						}
 						ScrollView {
 							vertical-stretch: 1;
@@ -1012,7 +1048,7 @@ export component MainWindow inherits Window {
 
 					HorizontalSplitter {
 						panel-height <=> request-query-panel-height;
-						min-panel-height: 80px;
+						min-panel-height: 30px;
 						max-panel-height: 10000px;
 					}
 
@@ -1023,8 +1059,8 @@ export component MainWindow inherits Window {
 
 						// Body only for methods that commonly carry a payload; stored when switching methods.
 						if method-allows-body(AppLogic.method): VerticalBox {
-							vertical-stretch: 0;
-							min-height: 248px;
+							vertical-stretch: 1;
+							min-height: 28px;
 							spacing: 4px;
 							padding: 0px;
 
@@ -1039,6 +1075,8 @@ export component MainWindow inherits Window {
 								ComboBox {
 									horizontal-stretch: 1;
 									min-width: 200px;
+									min-height: 28px;
+									max-height: 30px;
 									model: ["JSON", "Plain text", "Form (URL-encoded)"];
 									current-index <=> AppLogic.request-body-kind-index;
 									selected => {
@@ -1054,7 +1092,8 @@ export component MainWindow inherits Window {
 							}
 							TextEdit {
 								horizontal-stretch: 1;
-								height: 140px;
+								vertical-stretch: 1;
+								min-height: 40px;
 								text <=> AppLogic.request-body;
 								wrap: word-wrap;
 								font-size: 12px;
@@ -1074,11 +1113,11 @@ export component MainWindow inherits Window {
 
 						VerticalBox {
 							vertical-stretch: 1;
-							min-height: request-headers-panel-height;
 							spacing: 4px;
 							padding: 0px;
 
 							Text {
+								vertical-stretch: 0;
 								text: "Headers ({{var}} in name or value)";
 								font-size: 11px;
 							}
@@ -1176,6 +1215,8 @@ export component MainWindow inherits Window {
 							}
 							RectButton {
 								text: "+ header";
+								vertical-stretch: 0;
+								horizontal-stretch: 1;
 								clicked => {
 									AppLogic.add-request-header();
 								}

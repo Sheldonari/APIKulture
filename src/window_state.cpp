@@ -105,7 +105,8 @@ float clamp_sidebar_requests_section_height_px(float v) {
 }
 
 float clamp_request_query_panel_height_px(float v) {
-	return std::clamp(v, 80.f, 10000.f);
+	// Match `HorizontalSplitter` min-panel-height above query params (MainWindow.slint).
+	return std::clamp(v, 30.f, 10000.f);
 }
 
 float clamp_request_headers_panel_height_px(float v) {
@@ -141,14 +142,6 @@ PersistedWindowState load_window_session() {
 	s.response_headers_panel_height_px = clamp_response_headers_panel_height_px(
 			j.value("response_headers_panel_height_px", 120.0));
 
-	// Old sessions could save very large query + headers heights; on a short window the Body
-	// region (below both splitters) collapses to zero. Keep a conservative combined cap.
-	if (s.request_query_panel_height_px + s.request_headers_panel_height_px > 420.f) {
-		s.request_query_panel_height_px =
-				std::min(s.request_query_panel_height_px, 220.f);
-		s.request_headers_panel_height_px =
-				std::min(s.request_headers_panel_height_px, 180.f);
-	}
 	return s;
 }
 

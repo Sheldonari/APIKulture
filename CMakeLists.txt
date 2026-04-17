@@ -146,3 +146,39 @@ if(UNIX AND NOT APPLE)
 		DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
 		RENAME apikulture.svg)
 endif()
+
+# -----------------------------------------------------------------------------
+# CPack: native .deb / .rpm (and TGZ). Build a Release tree with prefix /usr, then:
+#   cd build && cpack -G DEB    # Debian / Ubuntu (dpkg-dev for shlibdeps)
+#   cpack -G RPM                # Fedora / openSUSE (rpm-build)
+#   cpack -G TGZ                # plain archive
+# -----------------------------------------------------------------------------
+set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_VENDOR "Sheldonari")
+set(CPACK_PACKAGE_CONTACT "Sheldonari <https://codeberg.org/Sheldonari/APIKulture>")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Native REST API client (collections, OpenAPI, HTTPS)")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+	set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+endif()
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "${CPACK_PACKAGE_NAME}")
+set(CPACK_PACKAGE_CHECKSUM "SHA256")
+
+if(UNIX AND NOT APPLE AND NOT WIN32)
+	set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-${CMAKE_SYSTEM_PROCESSOR}")
+endif()
+
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${CPACK_PACKAGE_CONTACT}")
+set(CPACK_DEBIAN_PACKAGE_SECTION "net")
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://www.apikulture.com")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	# Resolves libc, libssl, X11, etc. from apikulture + bundled libslint_cpp.so (needs dpkg-dev).
+	set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+endif()
+
+set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+set(CPACK_RPM_PACKAGE_URL "https://www.apikulture.com")
+set(CPACK_RPM_PACKAGE_GROUP "Applications/Internet")
+
+include(CPack)

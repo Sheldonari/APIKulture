@@ -22,6 +22,10 @@ public:
 	explicit AppState(const MainWindowHandle& ui);
 	~AppState();
 
+	/// Commit editor fields into the in-memory workspace and write `collections.json`.
+	/// Call after the event loop ends while the window API may still reflect last edits.
+	void save_collections_state();
+
 	void send_request();
 	void cancel_request();
 
@@ -68,7 +72,10 @@ public:
 	void tick_request_elapsed();
 	/// Enter in URL field: cancel if loading; else if URL changed since last import, parse `?query` into the table; then send.
 	void request_url_accepted();
+	/// URL field text changed (live); updates the effective-URL preview (query params, base URL, vars).
+	void request_url_edited();
 	void copy_response_body();
+	void copy_request_url();
 
 	/// Call after MainWindow is created to load data into UI models.
 	void init_collections_ui();
@@ -100,6 +107,8 @@ private:
 	void apply_openapi_import_result(apikulture::openapi::ImportResult&& result);
 	/// If URL field differs from \ref last_url_field_sync_, parse `?query` into the table (Enter / Send).
 	void sync_url_field_to_query_table_if_changed();
+	void sync_request_editor_before_http();
+	void refresh_resolved_request_url_display();
 	/// Parses \a raw (full URL or path with query) into the current item; updates UI. Returns false if unusable.
 	bool try_apply_url_import_from_text(const std::string& raw_utf8);
 	std::shared_ptr<slint::VectorModel<slint::SharedString>> make_name_model(

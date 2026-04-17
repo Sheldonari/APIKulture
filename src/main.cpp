@@ -121,6 +121,7 @@ int main(int argc, char** argv) {
 		g.set_openapi_import_url(slint::SharedString(""));
 		g.set_method(slint::SharedString("GET"));
 		g.set_url(slint::SharedString(""));
+		g.set_resolved_request_url(slint::SharedString(""));
 		g.set_request_body(slint::SharedString(""));
 		g.set_response_status(slint::SharedString(""));
 		g.set_response_headers(slint::SharedString(""));
@@ -171,6 +172,8 @@ int main(int argc, char** argv) {
 	logic.on_send_request([&state]() { state.send_request(); });
 	logic.on_cancel_request([&state]() { state.cancel_request(); });
 	logic.on_request_url_accepted([&state]() { state.request_url_accepted(); });
+	logic.on_request_url_edited([&state]() { state.request_url_edited(); });
+	logic.on_copy_request_url([&state]() { state.copy_request_url(); });
 	logic.on_copy_response_body([&state]() { state.copy_response_body(); });
 	logic.on_select_collection([&state](int i) { state.select_collection(i); });
 	logic.on_select_request([&state](int i) { state.select_request(i); });
@@ -221,6 +224,7 @@ int main(int argc, char** argv) {
 	logic.on_commit_response_font_size([&state](float px) { state.commit_response_font_size(px); });
 
 	ui->run();
+	// Window geometry first (splitter positions, sizes) while the UI is still in its last layout state.
 	{
 		auto& g = ui->global<AppLogic>();
 		apikulture::window_state::PersistedWindowState snapshot;
@@ -236,6 +240,8 @@ int main(int argc, char** argv) {
 		snapshot.response_headers_panel_height_px = ui->get_response_headers_panel_height();
 		apikulture::window_state::save_window_session(snapshot);
 	}
+	// Collections JSON after window-state.json (may touch globals; keep layout snapshot above).
+	state.save_collections_state();
 	stop_theme_watcher();
 	return 0;
 }
