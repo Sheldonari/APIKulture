@@ -102,7 +102,7 @@ While the app is running, the theme **updates automatically** when you follow th
 
 ### Multiplatform notes
 
-- **Windows**: A console window is shown by default; to hide it, link with `/SUBSYSTEM:WINDOWS` (see Slint docs). See **Runtime: Slint shared library** for DLL layout.
+- **Windows**: Built as a GUI subsystem application (no extra console window). See **Runtime: Slint shared library** for DLL layout.
 - **Linux**: See **Runtime: Slint shared library** for `libslint_cpp.so` (Ubuntu / Arch instructions above).
 - **macOS**: Dynamic Slint builds need the SDK’s shared libraries on the loader path at runtime (install Slint to a prefix, set rpath, or follow [Slint’s C++ setup](https://docs.slint.dev/latest/docs/cpp/cmake/) for your layout).
 

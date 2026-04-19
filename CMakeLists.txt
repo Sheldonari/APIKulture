@@ -16,12 +16,12 @@ endif()
 if(DEFINED ENV{SLINT_DIR})
 	set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};$ENV{SLINT_DIR}")
 endif()
-find_package(Slint 1.0 QUIET)
+find_package(Slint 1.15 QUIET)
 if(NOT Slint_FOUND)
 	FetchContent_Declare(
 			Slint
 			GIT_REPOSITORY https://github.com/slint-ui/slint.git
-			GIT_TAG release/1
+			GIT_TAG v1.15.1
 			SOURCE_SUBDIR api/cpp
 	)
 	FetchContent_MakeAvailable(Slint)
@@ -88,6 +88,12 @@ if(OpenSSL_FOUND)
 endif()
 
 if(WIN32)
+	# Build as a GUI subsystem app to avoid spawning an extra console window.
+	set_target_properties(apikulture PROPERTIES WIN32_EXECUTABLE TRUE)
+	if(MSVC)
+		# Keep `main()` as the entry point while linking as a windowed subsystem app.
+		target_link_options(apikulture PRIVATE "/ENTRY:mainCRTStartup")
+	endif()
 	target_link_libraries(apikulture PRIVATE comdlg32)
 endif()
 
