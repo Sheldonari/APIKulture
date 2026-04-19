@@ -90,6 +90,7 @@ endif()
 if(WIN32)
 	# Build as a GUI subsystem app to avoid spawning an extra console window.
 	set_target_properties(apikulture PROPERTIES WIN32_EXECUTABLE TRUE)
+	target_sources(apikulture PRIVATE src/apikulture.rc)
 	if(MSVC)
 		# Keep `main()` as the entry point while linking as a windowed subsystem app.
 		target_link_options(apikulture PRIVATE "/ENTRY:mainCRTStartup")

@@ -1,0 +1,3 @@
+// Windows executable icon resource for apikulture.exe
+#define IDI_APP_ICON 101
+IDI_APP_ICON ICON "../ui/icons/apikulture.ico"
