@@ -3,24 +3,24 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>APIkulture — REST API client</title>
-	<meta name="description" content="A fast, native REST API tester with collections, environments, OpenAPI import, and HTTPS. Download the Linux x86_64 AppImage or the Windows installer, or build from source. macOS build coming soon.">
+	<title>APIkulture - Native REST API client</title>
+	<meta name="description" content="A native desktop REST API client for sending HTTP requests, organizing collections, managing environments, importing OpenAPI 3.x specs, and inspecting JSON responses.">
 	<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 	<link rel="canonical" href="https://www.apikulture.com/">
 	<link rel="alternate" hreflang="en" href="https://www.apikulture.com/">
 	<link rel="alternate" hreflang="x-default" href="https://www.apikulture.com/">
-	<meta property="og:title" content="APIkulture — REST API client">
-	<meta property="og:description" content="Collections, environments, OpenAPI import, and HTTPS. Linux AppImage and Windows installer available; macOS coming soon.">
+	<meta property="og:title" content="APIkulture - Native REST API client">
+	<meta property="og:description" content="Native desktop REST client with collections, environments, OpenAPI 3.x import, HTTPS, and JSON response inspection.">
 	<meta property="og:url" content="https://www.apikulture.com/">
 	<meta property="og:type" content="website">
 	<meta property="og:site_name" content="APIkulture">
 	<meta property="og:locale" content="en_US">
-	<meta property="og:image" content="https://www.apikulture.com/assets/apikulture.svg">
-	<meta property="og:image:alt" content="APIkulture logo — bee and honeycomb motif">
+	<meta property="og:image" content="https://www.apikulture.com/assets/screenshot.png">
+	<meta property="og:image:alt" content="APIkulture app screenshot showing collections, request parameters, and a JSON response">
 	<meta name="twitter:card" content="summary_large_image">
-	<meta name="twitter:title" content="APIkulture — REST API client">
-	<meta name="twitter:description" content="Collections, environments, OpenAPI import, and HTTPS. Linux AppImage and Windows installer available; macOS coming soon.">
-	<meta name="twitter:image" content="https://www.apikulture.com/assets/apikulture.svg">
+	<meta name="twitter:title" content="APIkulture - Native REST API client">
+	<meta name="twitter:description" content="Native desktop REST client with collections, environments, OpenAPI 3.x import, HTTPS, and JSON response inspection.">
+	<meta name="twitter:image" content="https://www.apikulture.com/assets/screenshot.png">
 	<meta name="theme-color" content="#0f1218">
 	<link rel="icon" href="assets/apikulture.svg" type="image/svg+xml">
 	<link rel="stylesheet" href="css/style.css">
@@ -33,7 +33,7 @@
 				"@id": "https://www.apikulture.com/#website",
 				"url": "https://www.apikulture.com/",
 				"name": "APIkulture",
-				"description": "A fast, native REST API tester with collections, environments, OpenAPI import, and HTTPS.",
+				"description": "A native desktop REST API client for sending HTTP requests, organizing collections, managing environments, importing OpenAPI 3.x specs, and inspecting JSON responses.",
 				"publisher": { "@id": "https://www.apikulture.com/#organization" },
 				"inLanguage": "en-US"
 			},
@@ -53,9 +53,9 @@
 				"name": "APIkulture",
 				"applicationCategory": "DeveloperApplication",
 				"operatingSystem": "Linux, Windows",
-				"description": "A native REST client for sending requests, organizing collections, and importing OpenAPI 3.x specs.",
+				"description": "A native REST client for sending HTTP requests, organizing collections, managing environments, importing OpenAPI 3.x specs, and inspecting JSON responses.",
 				"url": "https://www.apikulture.com/",
-				"image": "https://www.apikulture.com/assets/apikulture.svg",
+				"image": "https://www.apikulture.com/assets/screenshot.png",
 				"softwareVersion": "1.0.0",
 				"license": "https://codeberg.org/Sheldonari/APIKulture/src/branch/main/LICENSE",
 				"codeRepository": "https://codeberg.org/Sheldonari/APIKulture",
@@ -97,9 +97,9 @@
 		<section class="hero">
 			<div class="wrap hero-grid">
 				<div class="hero-copy">
-					<h1>Your APIs, one hive</h1>
+					<h1>Native REST API testing for desktop</h1>
 					<p class="lede">
-						A native REST client for sending requests, organizing collections, and importing OpenAPI.
+						Send HTTP requests, manage collections and environments, import OpenAPI 3.x specs, and inspect formatted JSON responses in a focused native app.
 					</p>
 					<div class="hero-actions">
 						<a class="btn btn-primary" href="https://codeberg.org/Sheldonari/APIKulture/releases/download/1.0.0/APIkulture-1.0.0-x86_64.AppImage">Download for Linux</a>
@@ -108,13 +108,15 @@
 						<a class="btn btn-secondary" href="https://codeberg.org/Sheldonari/APIKulture">View on Codeberg</a>
 					</div>
 					<p class="hero-meta">
-						Open source · Linux AppImage (x86_64) · Windows installer (x64) · macOS coming soon · Slint UI · C++20
+						Open source · Native C++20 and Slint UI · Linux AppImage · Windows installer · macOS coming soon
 					</p>
 				</div>
-				<div class="hero-art" aria-hidden="true">
+				<div class="hero-art">
 					<figure>
-						<img src="assets/apikulture.svg" width="220" height="220" alt="">
-						<figcaption>Worker bee, meet your JSON hive.</figcaption>
+						<button class="screenshot-trigger" type="button" aria-haspopup="dialog" aria-controls="screenshot-dialog" data-screenshot-open>
+							<img class="hero-screenshot" src="assets/screenshot.png" width="1024" height="643" alt="APIkulture desktop app showing a GET request, query parameters, response headers, and a JSON response body">
+						</button>
+						<figcaption>Click to zoom the app screenshot.</figcaption>
 					</figure>
 				</div>
 			</div>
@@ -123,33 +125,33 @@
 		<section id="features" class="section-alt" aria-labelledby="features-heading">
 			<div class="wrap">
 				<header class="section-head">
-					<h2 id="features-heading">Built for real API work</h2>
-					<p>Sidebar collections, saved environments, and a focused editor.</p>
+					<h2 id="features-heading">Designed for everyday API testing</h2>
+					<p>Compose requests, reuse variables, import specs, and review responses without leaving the desktop app.</p>
 				</header>
 				<div class="feature-grid">
 					<article class="card">
 						<h3>Collections &amp; requests</h3>
-						<p>Multiple named collections, each with saved requests. Pick a row to load method, URL, headers, and body into the editor.</p>
+						<p>Save requests with method, URL, query parameters, headers, and body. Organize them into collections and reload them from the sidebar.</p>
 					</article>
 					<article class="card">
 						<h3>Environments &amp; persistence</h3>
-						<p>Per-collection environments with base URL and variables. Everything is stored as JSON under your user config directory—auto-saved on exit, with Save all when you need it.</p>
+						<p>Define per-collection base URLs and variables for repeated requests. Configuration is stored as JSON and can be saved explicitly.</p>
 					</article>
 					<article class="card">
 						<h3>OpenAPI 3.x import</h3>
-						<p>Import JSON specs into a new collection—one request per operation. Path <code>{id}</code> placeholders become <code>{{id}}</code> for variables. Fetch from a URL or load a local file.</p>
+						<p>Import OpenAPI 3.x JSON from a URL or local file. APIkulture creates one request per operation and maps path parameters to variables.</p>
 					</article>
 					<article class="card">
 						<h3>HTTP &amp; HTTPS</h3>
-						<p>GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS. Custom headers, raw JSON body, response status and headers, pretty-printed JSON bodies.</p>
+						<p>Send GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS requests over HTTP or HTTPS. Inspect status, headers, and formatted response bodies.</p>
 					</article>
 					<article class="card">
 						<h3>Non-blocking UI</h3>
-						<p>Send and cancel on a worker thread so the interface stays responsive while requests run.</p>
+						<p>Requests run on a worker thread with cancel support, so the interface stays responsive while network calls are in progress.</p>
 					</article>
 					<article class="card">
 						<h3>Light &amp; dark</h3>
-						<p>Material-style theme with system-aware light/dark support and optional overrides via environment variables or CLI flags.</p>
+						<p>System-aware light and dark themes are available, with optional overrides through environment variables or CLI flags.</p>
 					</article>
 				</div>
 				<div class="platforms" aria-label="Download availability by platform">
@@ -164,7 +166,7 @@
 			<div class="wrap">
 				<header class="section-head">
 					<h2 id="download-heading">Download</h2>
-					<p>Prebuilt packages: Linux portable AppImage, Windows installer.</p>
+					<p>Release packages are available for Linux and Windows.</p>
 				</header>
 				<div class="download-options">
 					<div class="download-row">
@@ -184,7 +186,7 @@
 					<div class="download-row download-row--soon">
 						<div>
 							<h3>macOS</h3>
-							<p class="download-meta">Disk image or app bundle — not available yet.</p>
+							<p class="download-meta">Disk image or app bundle - not available yet.</p>
 						</div>
 						<span class="download-badge" aria-hidden="true">Coming soon</span>
 					</div>
@@ -212,6 +214,11 @@ cmake --build .
 		</section>
 	</main>
 
+	<dialog class="screenshot-dialog" id="screenshot-dialog" aria-label="APIkulture app screenshot" data-screenshot-dialog>
+		<button class="screenshot-close" type="button" aria-label="Close screenshot" data-screenshot-close>&times;</button>
+		<img src="assets/screenshot.png" width="1024" height="643" alt="APIkulture desktop app showing a GET request, query parameters, response headers, and a JSON response body">
+	</dialog>
+
 	<footer class="site-footer" id="footer-links">
 		<div class="wrap footer-grid">
 			<div>
@@ -224,5 +231,36 @@ cmake --build .
 			</div>
 		</div>
 	</footer>
+	<script>
+		const screenshotTrigger = document.querySelector("[data-screenshot-open]");
+		const screenshotDialog = document.querySelector("[data-screenshot-dialog]");
+		const screenshotClose = document.querySelector("[data-screenshot-close]");
+
+		if (screenshotTrigger && screenshotDialog && screenshotClose) {
+			const openDialog = () => {
+				if (typeof screenshotDialog.showModal === "function") {
+					screenshotDialog.showModal();
+				} else {
+					screenshotDialog.setAttribute("open", "");
+				}
+			};
+
+			const closeDialog = () => {
+				if (typeof screenshotDialog.close === "function") {
+					screenshotDialog.close();
+				} else {
+					screenshotDialog.removeAttribute("open");
+				}
+			};
+
+			screenshotTrigger.addEventListener("click", openDialog);
+			screenshotClose.addEventListener("click", closeDialog);
+			screenshotDialog.addEventListener("click", (event) => {
+				if (event.target === screenshotDialog) {
+					closeDialog();
+				}
+			});
+		}
+	</script>
 </body>
 </html>
