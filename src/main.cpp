@@ -122,6 +122,8 @@ int main(int argc, char** argv) {
 		g.set_method(slint::SharedString("GET"));
 		g.set_url(slint::SharedString(""));
 		g.set_resolved_request_url(slint::SharedString(""));
+		g.set_query_params_text(slint::SharedString(""));
+		g.set_query_params_text_mode(false);
 		g.set_request_body(slint::SharedString(""));
 		g.set_response_status(slint::SharedString(""));
 		g.set_response_headers(slint::SharedString(""));
@@ -204,6 +206,7 @@ int main(int argc, char** argv) {
 		state.query_param_value_edited(idx, std::move(text));
 	});
 	logic.on_query_param_enabled_changed([&state](int idx, bool on) { state.query_param_enabled_changed(idx, on); });
+	logic.on_query_params_text_edited([&state]() { state.query_params_text_edited(); });
 	logic.on_request_elapsed_tick([&state]() { state.tick_request_elapsed(); });
 	logic.on_add_query_param([&state]() { state.add_query_param(); });
 	logic.on_remove_query_param([&state](int idx) { state.remove_query_param(idx); });

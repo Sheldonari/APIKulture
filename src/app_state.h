@@ -60,6 +60,7 @@ public:
 	void query_param_key_edited(int index, slint::SharedString text);
 	void query_param_value_edited(int index, slint::SharedString text);
 	void query_param_enabled_changed(int index, bool enabled);
+	void query_params_text_edited();
 	void add_query_param();
 	void remove_query_param(int index);
 
@@ -100,7 +101,7 @@ private:
 	void push_name_edits_to_ui();
 	void push_selection_to_ui();
 	void restore_request_index_for_current_collection();
-	void refresh_query_param_models();
+	void refresh_query_param_models(bool update_text_editor = true);
 	void refresh_request_header_models();
 	/// Copy header rows from Slint models into the current request (Send must see latest LineEdit text).
 	void sync_request_headers_from_ui_models_into_item();

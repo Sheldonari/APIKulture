@@ -406,6 +406,7 @@ export global AppLogic {
 	callback query-param-key-edited(int, string);
 	callback query-param-value-edited(int, string);
 	callback query-param-enabled-changed(int, bool);
+	callback query-params-text-edited();
 	callback add-query-param();
 	callback remove-query-param(int);
 	callback request-header-key-edited(int, string);
@@ -440,6 +441,8 @@ export global AppLogic {
 	in property <[string]> query-param-keys: [];
 	in property <[string]> query-param-values: [];
 	in property <[bool]> query-param-enabled: [];
+	in-out property <string> query-params-text: "";
+	in-out property <bool> query-params-text-mode: false;
 
 	in property <[string]> request-header-keys: [];
 	in property <[string]> request-header-values: [];
@@ -955,11 +958,28 @@ export component MainWindow inherits Window {
 						spacing: 0px;
 						padding: 0px;
 
-						Text {
-							text: "Query parameters";
-							font-size: 11px;
+						HorizontalBox {
+							padding: 0px;
+							spacing: 6px;
+							vertical-stretch: 0;
+							Text {
+								text: "Query parameters";
+								font-size: 11px;
+								vertical-alignment: center;
+								horizontal-stretch: 1;
+							}
+							RectButton {
+								text: AppLogic.query-params-text-mode ? "Table" : "Text";
+								min-btn-height: 24px;
+								min-btn-width: 52px;
+								pad-h: 8px;
+								pad-v: 2px;
+								clicked => {
+									AppLogic.query-params-text-mode = !AppLogic.query-params-text-mode;
+								}
+							}
 						}
-						ScrollView {
+						if !AppLogic.query-params-text-mode: ScrollView {
 							vertical-stretch: 1;
 							horizontal-stretch: 1;
 							min-height: 32px;
@@ -1050,7 +1070,20 @@ export component MainWindow inherits Window {
 								}
 							}
 						}
-						RectButton {
+						if AppLogic.query-params-text-mode: TextEdit {
+							horizontal-stretch: 1;
+							vertical-stretch: 1;
+							min-height: 72px;
+							text <=> AppLogic.query-params-text;
+							font-family: "monospace";
+							font-size: 12px;
+							wrap: word-wrap;
+							placeholder-text: "limit=25\n# include_archived=true";
+							edited => {
+								AppLogic.query-params-text-edited();
+							}
+						}
+						if !AppLogic.query-params-text-mode: RectButton {
 							text: "+ param";
 							clicked => {
 								AppLogic.add-query-param();

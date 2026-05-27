@@ -119,6 +119,53 @@ std::string body_kind_index_to_string(int idx) {
 	return "json";
 }
 
+std::vector<apikulture::QueryParam> parse_query_param_lines(const std::string& text) {
+	std::vector<apikulture::QueryParam> out;
+	std::istringstream stream(text);
+	std::string line;
+	while (std::getline(stream, line)) {
+		trim_in_place(line);
+		if (line.empty()) continue;
+
+		bool enabled = true;
+		if (line[0] == '#') {
+			enabled = false;
+			line.erase(line.begin());
+			if (!line.empty() && line[0] == ' ') line.erase(line.begin());
+			trim_in_place(line);
+		}
+		if (line.empty()) continue;
+
+		const size_t eq = line.find('=');
+		apikulture::QueryParam param;
+		if (eq == std::string::npos) {
+			param.key = line;
+		} else {
+			param.key = line.substr(0, eq);
+			param.value = line.substr(eq + 1);
+		}
+		trim_in_place(param.key);
+		trim_in_place(param.value);
+		if (param.key.empty() && param.value.empty()) continue;
+		param.enabled = enabled;
+		out.push_back(std::move(param));
+	}
+	return out;
+}
+
+std::string format_query_param_lines(const std::vector<apikulture::QueryParam>& params) {
+	std::ostringstream out;
+	bool first = true;
+	for (const auto& p : params) {
+		if (p.key.empty() && p.value.empty()) continue;
+		if (!first) out << '\n';
+		first = false;
+		if (!p.enabled) out << "# ";
+		out << p.key << '=' << p.value;
+	}
+	return out.str();
+}
+
 bool http_method_allows_request_body(std::string_view method) {
 	std::string m(method);
 	for (auto& c : m) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
@@ -1132,7 +1179,7 @@ void AppState::commit_environment_variables() {
 	refresh_resolved_request_url_display();
 }
 
-void AppState::refresh_query_param_models() {
+void AppState::refresh_query_param_models(bool update_text_editor) {
 	std::vector<std::string> keys;
 	std::vector<std::string> vals;
 	std::vector<bool> enabled;
@@ -1163,6 +1210,13 @@ void AppState::refresh_query_param_models() {
 	g.set_query_param_keys(query_param_keys_model_);
 	g.set_query_param_values(query_param_values_model_);
 	g.set_query_param_enabled(query_param_enabled_model_);
+	if (update_text_editor) {
+		if (apikulture::RequestItem* it = mutable_current_request_item()) {
+			g.set_query_params_text(slint::SharedString(format_query_param_lines(it->query_params)));
+		} else {
+			g.set_query_params_text(slint::SharedString(""));
+		}
+	}
 }
 
 void AppState::query_param_key_edited(int index, slint::SharedString text) {
@@ -1178,6 +1232,7 @@ void AppState::query_param_key_edited(int index, slint::SharedString text) {
 			query_param_keys_model_->set_row_data(index, text);
 		}
 	}
+	ui_->global<AppLogic>().set_query_params_text(slint::SharedString(format_query_param_lines(item->query_params)));
 	refresh_resolved_request_url_display();
 }
 
@@ -1194,6 +1249,7 @@ void AppState::query_param_value_edited(int index, slint::SharedString text) {
 			query_param_values_model_->set_row_data(index, text);
 		}
 	}
+	ui_->global<AppLogic>().set_query_params_text(slint::SharedString(format_query_param_lines(item->query_params)));
 	refresh_resolved_request_url_display();
 }
 
@@ -1210,6 +1266,18 @@ void AppState::query_param_enabled_changed(int index, bool enabled) {
 			query_param_enabled_model_->set_row_data(index, enabled);
 		}
 	}
+	ui_->global<AppLogic>().set_query_params_text(slint::SharedString(format_query_param_lines(item->query_params)));
+	refresh_resolved_request_url_display();
+}
+
+void AppState::query_params_text_edited() {
+	auto* item = mutable_current_request_item();
+	if (!item) return;
+	item->query_params = parse_query_param_lines(to_std_string(ui_->global<AppLogic>().get_query_params_text()));
+	if (item->query_params.empty()) {
+		item->query_params.push_back({});
+	}
+	refresh_query_param_models(false);
 	refresh_resolved_request_url_display();
 }
 
