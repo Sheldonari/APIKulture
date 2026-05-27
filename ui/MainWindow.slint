@@ -492,9 +492,11 @@ export component MainWindow inherits Window {
 
 	in-out property <length> collection-panel-width: 240px;
 	in-out property <length> request-panel-width: 420px;
-	in-out property <length> sidebar-collections-height: 220px;
+	in-out property <length> sidebar-collections-height: 200px;
 	/// Requests block (title + list + New/Dup/Del) above the splitter; below: Save / import / environment.
-	in-out property <length> sidebar-requests-section-height: 260px;
+	in-out property <length> sidebar-requests-section-height: 180px;
+	/// Reserved height for the import/environment/variables block below the sidebar splitters.
+	private property <length> sidebar-environment-min-height: 260px;
 	/// Height of the query-parameters block (label + list + “+ param”) above the horizontal splitter.
 	/// Default must leave room for headers + body on short windows (min-height 640px); drag splitters to expand.
 	in-out property <length> request-query-panel-height: 200px;
@@ -613,7 +615,7 @@ export component MainWindow inherits Window {
 				HorizontalSplitter {
 					panel-height <=> sidebar-collections-height;
 					min-panel-height: 120px;
-					max-panel-height: 10000px;
+					max-panel-height: Math.max(120px, root.height - sidebar-requests-section-height - sidebar-environment-min-height - 12px);
 				}
 
 				VerticalBox {
@@ -698,18 +700,20 @@ export component MainWindow inherits Window {
 				HorizontalSplitter {
 					panel-height <=> sidebar-requests-section-height;
 					min-panel-height: 140px;
-					max-panel-height: 10000px;
+					max-panel-height: Math.max(140px, root.height - sidebar-collections-height - sidebar-environment-min-height - 12px);
 				}
 				VerticalBox {
 					vertical-stretch: 1;
 					spacing: 2px;
 
 					Text {
+						vertical-stretch: 0;
 						text: "OpenAPI URL (JSON)";
 						font-size: 11px;
 						color: Palette.foreground;
 					}
 					HorizontalBox {
+						vertical-stretch: 0;
 						padding: 0px;
 						spacing: 3px;
 						CompactLineEdit {
@@ -733,6 +737,7 @@ export component MainWindow inherits Window {
 					}
 
 					if AppLogic.import-status != "": Text {
+						vertical-stretch: 0;
 						text: AppLogic.import-status;
 						font-size: 10px;
 						color: Palette.foreground;
@@ -740,12 +745,14 @@ export component MainWindow inherits Window {
 					}
 
 					Text {
+						vertical-stretch: 0;
 						text: "Environment";
 						font-size: 13px;
 						font-weight: 700;
 						color: Palette.foreground;
 					}
 					ComboBox {
+						vertical-stretch: 0;
 						model: AppLogic.environment-names;
 						current-value <=> AppLogic.active-environment-name;
 						selected(name) => {
@@ -765,6 +772,7 @@ export component MainWindow inherits Window {
 						}
 					}
 					Text {
+						vertical-stretch: 0;
 						text: "Base URL";
 						font-size: 11px;
 						color: Palette.foreground;
@@ -779,12 +787,14 @@ export component MainWindow inherits Window {
 						}
 					}
 					Text {
+						vertical-stretch: 0;
 						text: "Request URL can be a path (/v1/users); full URLs skip the base.";
 						font-size: 10px;
 						color: Palette.foreground;
 						wrap: word-wrap;
 					}
 					HorizontalBox {
+						vertical-stretch: 0;
 						padding: 0px;
 						spacing: 3px;
 						RectButton {
@@ -801,22 +811,24 @@ export component MainWindow inherits Window {
 						}
 					}
 					Text {
+						vertical-stretch: 0;
 						text: "Variables";
 						font-size: 13px;
 						font-weight: 700;
 						color: Palette.foreground;
 					}
 					Text {
+						vertical-stretch: 0;
 						text: "Shared by all environments in this collection. One KEY=value per line; use {{KEY}} in URL, headers, query params, or body. Lines starting with # are comments.";
 						font-size: 10px;
 						color: Palette.foreground;
 						wrap: word-wrap;
 					}
-					// TextEdit needs an explicit height; inside ScrollView with no height it collapsed to ~0 (only the label was visible).
+					// All surplus height in the environment block belongs to the variables editor.
 					TextEdit {
 						horizontal-stretch: 1;
-						vertical-stretch: 0;
-						min-height: 48px;
+						vertical-stretch: 1;
+						min-height: 96px;
 						text <=> AppLogic.environment-variables;
 						font-family: "monospace";
 						font-size: 12px;
